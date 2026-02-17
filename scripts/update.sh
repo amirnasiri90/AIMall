@@ -36,15 +36,21 @@ RELEASE_ID=$(git rev-parse --short HEAD 2>/dev/null || echo "build-$(date +%Y%m%
 echo "{\"releaseId\":\"$RELEASE_ID\"}" > "$PROJECT_ROOT/frontend/public/release.json"
 log_info "Release ID: $RELEASE_ID"
 
-log_info "Build Frontend..."
-(cd "$PROJECT_ROOT/frontend" && npm run build)
+log_info "Build Frontend (پاک‌سازی .next برای بیلد تمیز)..."
+(cd "$PROJECT_ROOT/frontend" && rm -rf .next && npm run build)
 
 if command -v pm2 &>/dev/null; then
-  log_info "ری‌استارت سرویس‌های PM2..."
-  pm2 restart aimall-backend 2>/dev/null || true
-  pm2 restart aimall-frontend 2>/dev/null || true
+  log_info "ری‌استارت سرویس‌های PM2 (از مسیر همین پروژه)..."
+  cd "$PROJECT_ROOT"
+  pm2 delete aimall-backend 2>/dev/null || true
+  pm2 delete aimall-frontend 2>/dev/null || true
+  pm2 start ecosystem.config.cjs
   pm2 save
-  log_info "به‌روزرسانی تمام شد."
+  log_info "به‌روزرسانی تمام شد. (Release: $RELEASE_ID)"
+  echo ""
+  log_info "اگر در مرورگر تغییری ندیدید:"
+  echo "  ۱) Hard Refresh: Ctrl+Shift+R (یا Cmd+Shift+R)"
+  echo "  ۲) اگر از Cloudflare استفاده می‌کنید: داشبورد Cloudflare → Caching → Purge Everything"
 else
   log_warn "PM2 یافت نشد. Backend و Frontend را دستی ری‌استارت کنید."
 fi
