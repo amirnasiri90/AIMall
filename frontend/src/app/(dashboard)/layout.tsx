@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import { GenieRail } from '@/components/layout/genie-rail';
 import { MobileSidebar } from '@/components/layout/mobile-sidebar';
 import { ProfileSelectModal } from '@/components/profile-select-modal';
+import { UpdateNotice } from '@/components/update-notice';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
@@ -75,6 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className={cn('flex flex-col bg-background overflow-x-hidden h-screen', isChat && 'overflow-hidden')}>
       <ProfileSelectModal />
+      <UpdateNotice />
       {/* Mobile top bar: only on small screens — min 48px height for touch */}
       <header className="flex md:hidden h-14 min-h-[48px] flex-shrink-0 items-center justify-between gap-2 px-3 sm:px-4 border-b border-border bg-background/80 backdrop-blur-sm safe-area-inset-top">
         <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" onClick={() => setMobileMenuOpen(true)} aria-label="منو">
