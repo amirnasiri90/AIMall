@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { X, LayoutDashboard, MessageSquare, FileText, ImageIcon, Mic, CreditCard, Settings, Shield, Building2, Bot, Code2, LifeBuoy } from 'lucide-react';
+import { X, LayoutDashboard, MessageSquare, FileText, ImageIcon, Mic, CreditCard, Settings, Shield, Building2, Bot, Code2, LifeBuoy, Coins, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/lib/store';
 import { api } from '@/lib/api';
@@ -102,8 +102,19 @@ export function MobileSidebar({ open, onClose }: { open: boolean; onClose: () =>
             </Link>
           )}
         </nav>
-        <div className="flex-shrink-0 border-t border-[hsl(var(--glass-border-subtle))] p-3 space-y-0.5">
-          <p className="text-xs font-medium text-muted-foreground px-3 py-1">پروفایل</p>
+        <div className="flex-shrink-0 border-t border-[hsl(var(--glass-border-subtle))] p-3 space-y-2">
+          <div className="flex items-center gap-3 rounded-xl px-3 py-2.5 bg-muted/50 border border-border/50">
+            <span className="w-10 h-10 rounded-full bg-background flex items-center justify-center shrink-0">
+              <User className="w-5 h-5 text-muted-foreground" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">{user?.name || 'کاربر'}</p>
+              <Link href="/billing" onClick={onClose} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mt-0.5">
+                <Coins className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                <span className="tabular-nums">{user?.coins ?? 0} سکه</span>
+              </Link>
+            </div>
+          </div>
           <Link
             href="/settings"
             onClick={onClose}

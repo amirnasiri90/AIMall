@@ -1,0 +1,109 @@
+# ─── AIMall Panel: panel.aifoapp.ir (HTTPS) ───
+# برای Cloudflare Full (strict): X-Forwarded-Proto را صریح https بگذار تا از ERR_TOO_MANY_REDIRECTS جلوگیری شود.
+server {
+    server_name panel.aifoapp.ir;
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_cache_bypass $http_upgrade;
+    }
+    location /api/v1 {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/panel.aifoapp.ir/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/panel.aifoapp.ir/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+}
+
+# ─── AIMall API (درگاه زرین‌پال): api.aifoapp.ir ───
+# پورت 80 (برای وقتی Cloudflare روی Flexible است یا قبل از گرفتن گواهی)
+server {
+    listen 80;
+    server_name api.aifoapp.ir;
+
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# پورت 443 برای api.aifoapp.ir — برای رفع خطای ۵۲۵ (callback درگاه).
+# اول روی سرور اجرا کن: sudo certbot --nginx -d api.aifoapp.ir
+# بعد از certbot این بلوک معمولاً خودکار اضافه می‌شود؛ اگر دستی می‌خواهی اضافه کنی از زیر کپی کن:
+# server {
+#     listen 443 ssl;
+#     server_name api.aifoapp.ir;
+#     ssl_certificate /etc/letsencrypt/live/api.aifoapp.ir/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/api.aifoapp.ir/privkey.pem;
+#     include /etc/letsencrypt/options-ssl-nginx.conf;
+#     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+#     location / {
+#         proxy_pass http://127.0.0.1:3001;
+#         proxy_http_version 1.1;
+#         proxy_set_header Host $host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto https;
+#     }
+# }
+
+# ─── Medical: ganoteb.health ───
+server {
+    listen 80;
+    server_name ganoteb.health www.ganoteb.health;
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+# ─── panel.aifoapp.ir روی پورت 80 (برای Cloudflare Flexible؛ بدون ریدایرکت به HTTPS) ───
+server {
+    listen 80;
+    server_name panel.aifoapp.ir;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+    location /api/v1 {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

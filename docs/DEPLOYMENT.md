@@ -162,6 +162,37 @@ cd /path/to/AIMall
 
 ## عیب‌یابی
 
+### سایت اصلاً بالا نمی‌آید (صفحه سفید، ۵۰۲، یا اتصال قطع)
+
+روی سرور این اسکریپت را اجرا کن تا وضعیت سرویس‌ها و پورت‌ها را ببینی:
+
+```bash
+cd ~/AIMall
+chmod +x scripts/check-server.sh
+./scripts/check-server.sh
+```
+
+خروجی به تو می‌گوید کدام بخش [OK] و کدام [FAIL] است.
+
+| اگر [FAIL] بود برای | کار انجام بده |
+|----------------------|----------------|
+| **aimall-backend آنلاین نیست** | `cd ~/AIMall/backend && npm run build:prod && cd ~/AIMall && pm2 start ecosystem.config.cjs --only aimall-backend && pm2 save` |
+| **aimall-frontend آنلاین نیست** | `cd ~/AIMall/frontend && rm -rf .next && npm run build && cd ~/AIMall && pm2 start ecosystem.config.cjs --only aimall-frontend && pm2 save` |
+| **پورت 3000/3001 گوش نمی‌دهد** | همان بالا؛ بعد از build و start، دوباره `./scripts/check-server.sh` بزن |
+| **فرانت جواب نداد** | فرانت را build کن و با PM2 استارت کن (بالا). لاگ: `pm2 logs aimall-frontend` |
+| **بک‌اند جواب نداد** | بک‌اند را build:prod و استارت کن. لاگ: `pm2 logs aimall-backend` |
+| **backend/dist/main.js وجود ندارد** | `cd ~/AIMall/backend && npm run build:prod` |
+| **frontend/.next وجود ندارد** | `cd ~/AIMall/frontend && npm run build` |
+| **nginx -t خطا داد** | فایل کانفیگ Nginx را اصلاح کن؛ معمولاً در `/etc/nginx/sites-available/` |
+
+اگر همه [OK] بود ولی از بیرون (با دامنه) سایت باز نمی‌شود:
+
+- **فایروال:** `sudo ufw allow 80 && sudo ufw allow 443 && sudo ufw status`
+- **Nginx:** `sudo systemctl status nginx` و `sudo nginx -t && sudo systemctl reload nginx`
+- **DNS/Cloudflare:** رکورد A دامنه به IP سرور اشاره کند و پروکسی (نارنجی) درست باشد. رفع ریدایرکت و SSL در `docs/troubleshoot-domain-cloudflare.md`.
+
+---
+
 ### خطای `Cannot find module '.../dist/main'` یا `.../dist/main.js'`
 
 دو احتمال دارد: (۱) پوشهٔ `dist` ساخته نشده یا خالی است، (۲) PM2 از مسیر (cwd) اشتباه اجرا می‌شود و فایل را پیدا نمی‌کند.
@@ -285,6 +316,30 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3001/api/v1/auth/login
 ```
 
 (۴۰۰ یا ۴۲۲ یعنی بک‌اند جواب داده؛ ۵۰۲ یا اتصال قطع یعنی بک‌اند جواب نمی‌دهد.)
+
+---
+
+### خطای `Failed to find Server Action "x". This request might be from an older or newer deployment` (فرانت‌اند)
+
+یعنی مرورگر با یک **build قدیمی** (کش شده) با سرور که **build جدید** دارد صحبت می‌کند؛ شناسهٔ Server Actionها عوض شده و دیگر تطابق ندارند.
+
+**روی سرور – build تمیز فرانت و ری‌استارت:**
+
+```bash
+cd ~/AIMall/frontend
+rm -rf .next
+npm run build
+cd ~/AIMall
+pm2 restart aimall-frontend
+pm2 save
+```
+
+**برای کاربران (مرورگر):**
+
+- یک بار **Hard Refresh:** `Ctrl+Shift+R` (ویندوز/لینوکس) یا `Cmd+Shift+R` (مک).
+- یا در DevTools → Application → Storage → **Clear site data** برای همین دامنه، بعد رفرش و دوباره لاگین.
+
+بعد از build تمیز و ری‌استارت فرانت، اگر کاربر هنوز خطا دید، حتماً Hard Refresh یا پاک کردن کش/دادهٔ سایت را انجام دهد.
 
 ---
 

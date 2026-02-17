@@ -77,7 +77,7 @@ export function AgentChatPage({ config }: { config: AgentChatConfig }) {
   const [level, setLevel] = useState('standard');
   const [style, setStyle] = useState('detailed');
   const [mode, setMode] = useState('fast');
-  const [settingsPanelOpen, setSettingsPanelOpen] = useState(true);
+  const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -260,27 +260,34 @@ export function AgentChatPage({ config }: { config: AgentChatConfig }) {
       </div>
 
       <Tabs defaultValue="chat" className="flex-1 min-h-0 flex flex-col" dir="rtl">
-        <TabsList className="w-full justify-start flex-wrap gap-1 mb-3 flex-shrink-0" aria-label="تب‌های دستیار">
-          <TabsTrigger value="chat" className="gap-1.5"><MessageSquare className="h-3.5 w-3.5 shrink-0" aria-hidden /> چت</TabsTrigger>
-          <TabsTrigger value="workspace" className="gap-1.5"><LayoutGrid className="h-3.5 w-3.5 shrink-0" aria-hidden /> فضای کار</TabsTrigger>
-          <TabsTrigger value="saved" className="gap-1.5"><Bookmark className="h-3.5 w-3.5 shrink-0" aria-hidden /> ذخیره‌شده</TabsTrigger>
-          <TabsTrigger value="insights" className="gap-1.5"><BarChart3 className="h-3.5 w-3.5 shrink-0" aria-hidden /> بینش‌ها</TabsTrigger>
-          <TabsTrigger value="settings" className="gap-1.5"><Settings className="h-3.5 w-3.5 shrink-0" aria-hidden /> تنظیمات</TabsTrigger>
+        <TabsList className="w-fit justify-start gap-0.5 mb-3 flex-shrink-0 p-1 h-auto" aria-label="تب‌های دستیار">
+          <TabsTrigger value="chat" className="size-9 p-0 rounded-md" aria-label="چت"><MessageSquare className="h-4 w-4 shrink-0" aria-hidden /></TabsTrigger>
+          <TabsTrigger value="workspace" className="size-9 p-0 rounded-md" aria-label="فضای کار"><LayoutGrid className="h-4 w-4 shrink-0" aria-hidden /></TabsTrigger>
+          <TabsTrigger value="saved" className="size-9 p-0 rounded-md" aria-label="ذخیره‌شده"><Bookmark className="h-4 w-4 shrink-0" aria-hidden /></TabsTrigger>
+          <TabsTrigger value="insights" className="size-9 p-0 rounded-md" aria-label="بینش‌ها"><BarChart3 className="h-4 w-4 shrink-0" aria-hidden /></TabsTrigger>
+          <TabsTrigger value="settings" className="size-9 p-0 rounded-md" aria-label="تنظیمات"><Settings className="h-4 w-4 shrink-0" aria-hidden /></TabsTrigger>
         </TabsList>
 
         <TabsContent value="chat" className="flex-1 min-h-0 flex flex-col mt-0 data-[state=inactive]:hidden">
-          <div className="flex flex-1 min-h-0 gap-0 overflow-hidden">
-            {/* پنل تنظیمات کنار چت (مثل دستیار دانش‌آموز) */}
+          <div className="flex flex-1 min-h-0 gap-0 overflow-hidden relative">
+            {/* پنل تنظیمات: موبایل = تمام‌صفحه روی چت، دسکتاپ = کنار چت */}
             <div
               className={cn(
-                'flex flex-col border-l border-border bg-muted/20 transition-all duration-300 overflow-hidden',
-                settingsPanelOpen ? 'w-72 min-w-[18rem] shrink-0' : 'w-0 min-w-0'
+                'flex flex-col border-border bg-muted/20 transition-all duration-300 overflow-hidden',
+                settingsPanelOpen
+                  ? 'fixed inset-0 z-50 bg-background md:relative md:inset-auto md:z-auto md:w-72 md:min-w-[18rem] md:shrink-0 md:border-l'
+                  : 'w-0 min-w-0 shrink-0 hidden md:flex'
               )}
               aria-hidden={!settingsPanelOpen}
             >
-              <div className="flex items-center gap-2 p-3 border-b border-border">
-                <Settings2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm font-semibold">تنظیمات دستیار</span>
+              <div className="flex items-center justify-between gap-2 p-3 border-b border-border flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Settings2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm font-semibold">تنظیمات دستیار</span>
+                </div>
+                <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={() => setSettingsPanelOpen(false)} aria-label="بستن تنظیمات">
+                  <PanelLeftClose className="h-4 w-4" />
+                </Button>
               </div>
               <ScrollArea className="flex-1">
                 <div className="p-3 space-y-4">
@@ -354,13 +361,24 @@ export function AgentChatPage({ config }: { config: AgentChatConfig }) {
                   ))}
                 </div>
               )}
-              <div className="flex flex-wrap gap-2 mb-3 flex-shrink-0">
-                {quickActions.map((qa) => (
-                  <Button key={qa.label} variant="outline" size="sm" className="text-xs" onClick={() => sendMessage(qa.text)} disabled={streaming}>
-                    {qa.label}
-                  </Button>
-                ))}
-              </div>
+              {quickActions.length > 0 && (
+                <div className="mb-3 flex-shrink-0 rounded-lg border border-border bg-muted/30 p-2.5">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">پرامت‌های آماده</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {quickActions.map((qa) => (
+                      <button
+                        key={qa.label}
+                        type="button"
+                        onClick={() => sendMessage(qa.text)}
+                        disabled={streaming}
+                        className="text-xs px-2.5 py-1.5 rounded-md bg-background border border-border hover:bg-muted/50 hover:border-primary/30 transition-colors disabled:opacity-50 text-right"
+                      >
+                        {qa.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {streamError && (
                 <div className="flex items-center justify-between gap-2 mb-3 p-3 rounded-lg border border-destructive/50 bg-destructive/10 text-sm" role="alert">
                   <span className="flex items-center gap-2"><AlertCircle className="h-4 w-4 shrink-0" /> {streamError}</span>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import { useAuthStore, useHydrateAuth } from '@/lib/store';
 import { api } from '@/lib/api';
 import { GenieRail } from '@/components/layout/genie-rail';
@@ -11,7 +12,14 @@ import { MobileSidebar } from '@/components/layout/mobile-sidebar';
 import { ProfileSelectModal } from '@/components/profile-select-modal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Menu } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Menu, Coins, User, Settings, LogOut, Sun, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -19,8 +27,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { token, user, setUser, logout, _hydrated } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
 
   useEffect(() => {
     if (!_hydrated) return;
@@ -28,8 +42,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.replace('/login');
       return;
     }
-    api
-      .getMe()
+    const timeoutMs = 15000;
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), timeoutMs)
+    );
+    Promise.race([api.getMe(), timeoutPromise])
       .then((userData) => {
         setUser(userData);
         setLoading(false);
@@ -63,13 +80,56 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" onClick={() => setMobileMenuOpen(true)} aria-label="منو">
           <Menu className="h-5 w-5" />
         </Button>
-        <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
+        <Link href="/dashboard" className="flex items-center gap-2 min-w-0 flex-1 justify-center">
           <div className="relative h-8 w-8 shrink-0">
             <Image src="/logo.png" alt="AiFO" fill className="object-contain" sizes="32px" />
           </div>
           <span className="font-bold text-sm truncate">AiFO</span>
         </Link>
-        <div className="w-11 shrink-0" />
+        <div className="flex items-center gap-1 shrink-0 min-w-0">
+          <Link
+            href="/billing"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-muted/80 transition-colors min-w-0"
+            aria-label="موجودی سکه"
+          >
+            <Coins className="h-4 w-4 text-amber-500 shrink-0" />
+            <span className="text-sm font-medium tabular-nums truncate max-w-[4rem]">{user?.coins ?? 0}</span>
+          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" aria-label="پروفایل">
+                <User className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="bottom" className="rounded-xl border border-border min-w-[180px]">
+              <div className="px-3 py-2 border-b border-border">
+                <p className="text-sm font-medium truncate">{user?.name || 'کاربر'}</p>
+                <p className="text-xs text-muted-foreground">{user?.coins ?? 0} سکه</p>
+              </div>
+              <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="rounded-lg gap-2">
+                {theme === 'dark' ? <Sun className="h-4 w-4 shrink-0" /> : <Moon className="h-4 w-4 shrink-0" />}
+                {theme === 'dark' ? 'تم روشن' : 'تم تاریک'}
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="rounded-lg flex items-center gap-2">
+                  <Settings className="h-4 w-4 shrink-0" />
+                  تنظیمات
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/billing" className="rounded-lg flex items-center gap-2">
+                  <Coins className="h-4 w-4 shrink-0" />
+                  صورتحساب و سکه
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive rounded-lg gap-2">
+                <LogOut className="h-4 w-4 shrink-0" />
+                خروج
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </header>
       <MobileSidebar open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
       <div className={cn('flex flex-1 min-h-0 min-w-0 p-2 sm:p-4 gap-2 sm:gap-4', isChat && 'overflow-hidden')}>

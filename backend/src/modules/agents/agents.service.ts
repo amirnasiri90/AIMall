@@ -764,11 +764,12 @@ ${params.workspaceContext ? `\n# داده‌های فضای کار کاربر (�
     const messages = [
       { role: 'system', content: systemPrompt },
       ...contextMessages,
+      { role: 'user', content: message },
     ];
 
     let fullResponse = '';
     try {
-      const stream = this.providerManager.streamTextWithFallback(message, model, { messages });
+      const stream = this.providerManager.streamTextWithFallback('', model, { messages });
       for await (const chunk of stream) {
         fullResponse += chunk;
         yield { type: 'delta', content: chunk };
