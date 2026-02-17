@@ -27,7 +27,7 @@ export function UpdateNotice() {
     if (typeof window === 'undefined') return;
 
     let cancelled = false;
-    fetch('/release.json', { cache: 'no-store' })
+    fetch('/api/release', { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { releaseId?: string } | null) => {
         if (cancelled) return;
