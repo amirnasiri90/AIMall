@@ -1,0 +1,379 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String         @id @default(uuid())
+  email                String         @unique
+  password             String
+  name                 String?
+  phone                String?        @unique
+  role                 String         @default("USER")
+  coins                Int            @default(200)
+  hasOrganizationPlan  Boolean        @default(false)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  conversations Conversation[]
+  transactions  Transaction[]
+  paymentOrders PaymentOrder[]
+  generations   Generation[]
+  apiKeys       ApiKey[]
+  orgMembers    OrgMember[]
+  orgInvitationsReceived OrgInvitation[]
+  jobs          Job[]
+  knowledgeBases KnowledgeBase[]
+  workflows     Workflow[]
+  workflowRuns  WorkflowRun[]
+  supportTickets SupportTicket[]
+  ticketMessages TicketMessage[]
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model ApiKey {
+  id        String    @id @default(uuid())
+  userId    String
+  name      String
+  keyHash   String    @unique
+  keyPrefix String
+  scopes    String?
+  lastUsedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Organization {
+  id              String         @id @default(uuid())
+  name            String
+  slug            String         @unique
+  plan            String         @default("FREE")
+  customCoinQuota Int?
+  contractEndsAt  DateTime?
+  memberLimit     Int?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  members         OrgMember[]
+  invitations     OrgInvitation[]
+  knowledgeBases  KnowledgeBase[]
+  workflows       Workflow[]
+}
+
+model OrgInvitation {
+  id              String   @id @default(uuid())
+  organizationId  String
+  email           String
+  phone           String?
+  userId          String
+  role            String   @default("MEMBER")
+  invitedByUserId String
+  status          String   @default("PENDING")
+  token           String?  @unique
+  createdAt       DateTime @default(now())
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OrgMember {
+  id                  String       @id @default(uuid())
+  organizationId      String
+  userId              String
+  role                String       @default("MEMBER")
+  limitChats         Int?
+  limitImageGen       Int?
+  limitTextGen        Int?
+  canUseAgents        Boolean      @default(true)
+  createdAt           DateTime     @default(now())
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+}
+
+model Job {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String
+  payload     String?
+  status      String   @default("PENDING")
+  result      String?
+  error       String?
+  createdAt   DateTime @default(now())
+  startedAt  DateTime?
+  completedAt DateTime?
+  user        User     @relation(fields: [userId], references: [id])
+  workflowRuns WorkflowRun[]
+}
+
+model KnowledgeBase {
+  id              String        @id @default(uuid())
+  userId          String
+  organizationId  String?
+  name            String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  documents       Document[]
+}
+
+model Document {
+  id             String        @id @default(uuid())
+  knowledgeBaseId String
+  name          String
+  content       String
+  metadata      String?
+  createdAt     DateTime      @default(now())
+  knowledgeBase KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  chunks        DocumentChunk[]
+}
+
+model DocumentChunk {
+  id         String   @id @default(uuid())
+  documentId String
+  content    String
+  embedding  String
+  createdAt  DateTime @default(now())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model Workflow {
+  id              String        @id @default(uuid())
+  userId          String
+  organizationId  String?
+  name            String
+  definition      String
+  isPublic        Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  user            User          @relation(fields: [userId], references: [id])
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  runs            WorkflowRun[]
+}
+
+model WorkflowRun {
+  id         String   @id @default(uuid())
+  workflowId String
+  userId     String
+  jobId      String?
+  status     String   @default("PENDING")
+  input      String?
+  output     String?
+  error      String?
+  createdAt  DateTime @default(now())
+  completedAt DateTime?
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
+  job        Job?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
+}
+
+model Conversation {
+  id             String              @id @default(uuid())
+  userId         String
+  organizationId String?
+  title          String              @default("گفتگوی جدید")
+  model          String?
+  agentId        String?
+  isPinned       Boolean             @default(false)
+  isArchived     Boolean             @default(false)
+  systemPrompt   String?
+  summary        String?
+  summaryAt      DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  user           User                @relation(fields: [userId], references: [id])
+  messages       Message[]
+  memories       ConversationMemory[]
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  role           String
+  content        String
+  tokenCount     Int?
+  metadata       String?
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model ConversationMemory {
+  id             String       @id @default(uuid())
+  conversationId String
+  type           String       @default("summary")
+  content        String
+  messageCount   Int          @default(0)
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model Transaction {
+  id             String   @id @default(uuid())
+  userId         String
+  type           String
+  amount         Int
+  balance        Int
+  reason         String
+  service        String?
+  category       String   @default("usage")
+  referenceId    String?
+  idempotencyKey String?  @unique
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id])
+}
+
+model CoinPackage {
+  id              String         @id @default(uuid())
+  name            String
+  coins           Int
+  priceIRR        Int
+  description     String?
+  packageType     String         @default("PERSONAL")
+  isActive        Boolean        @default(true)
+  sortOrder       Int            @default(0)
+  discountPercent Int            @default(0)
+  createdAt       DateTime       @default(now())
+  paymentOrders   PaymentOrder[]
+}
+
+model PaymentOrder {
+  id              String        @id @default(uuid())
+  userId          String
+  packageId       String?
+  coins           Int
+  priceIRR        Int
+  discountAmount  Int           @default(0)
+  discountCodeId  String?
+  status          String        @default("PENDING")
+  gateway         String        @default("zarinpal")
+  authority       String?       @unique
+  refId           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  user            User          @relation(fields: [userId], references: [id])
+  package         CoinPackage?  @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  discountCode    DiscountCode? @relation(fields: [discountCodeId], references: [id], onDelete: SetNull)
+}
+
+model DiscountCode {
+  id            String         @id @default(uuid())
+  code          String         @unique
+  type          String         @default("PERCENT")
+  value         Int
+  minOrderIRR   Int?
+  maxUses       Int?
+  usedCount     Int            @default(0)
+  validFrom     DateTime?
+  validTo       DateTime?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  paymentOrders PaymentOrder[]
+}
+
+model Generation {
+  id             String   @id @default(uuid())
+  userId         String
+  organizationId String?
+  service        String
+  input          String
+  output         String
+  model          String?
+  coinCost       Int      @default(0)
+  metadata       String?
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id])
+}
+
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  category    String   @default("general")
+  updatedAt   DateTime @updatedAt
+}
+
+model AiProviderConfig {
+  id           String   @id @default(uuid())
+  providerKey  String   @unique
+  displayName  String
+  category     String
+  apiKey       String?
+  config       String?
+  isEnabled    Boolean  @default(false)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model ProviderHealth {
+  id           String   @id @default(uuid())
+  providerId   String   @unique
+  name         String
+  status       String   @default("healthy")
+  lastCheckAt  DateTime @default(now())
+  avgLatencyMs Int      @default(0)
+  errorCount   Int      @default(0)
+  successCount Int      @default(0)
+  isEnabled    Boolean  @default(true)
+  metadata     String?
+}
+
+model ToolDefinition {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  displayName String
+  description String
+  category    String   @default("utility")
+  isEnabled   Boolean  @default(true)
+  config      String?
+  schema      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  ip        String?
+  createdAt DateTime @default(now())
+}
+
+model SupportTicket {
+  id           String         @id @default(uuid())
+  userId       String
+  subject      String
+  category     String         @default("CONSULTING_SALES") // CONSULTING_SALES | TECHNICAL
+  status       String         @default("OPEN")
+  assignedToId String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages     TicketMessage[]
+}
+
+model TicketMessage {
+  id        String        @id @default(uuid())
+  ticketId  String
+  authorId  String
+  content   String
+  isStaff   Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}

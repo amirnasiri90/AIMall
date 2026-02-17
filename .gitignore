@@ -1,0 +1,14 @@
+.cursor/
+node_modules/
+dist/
+.next/
+.env
+.env.local
+.env.*.local
+*.db
+*.db-journal
+out/
+backend/data/
+# فایل‌های env واقعی را در گیت commit نکنید؛ فقط .env.example
+backend/.env
+frontend/.env.local

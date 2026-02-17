@@ -1,0 +1,424 @@
+1) سند جامع ARD — AI Mall Platform
+
+عنوان: AI Mall Platform — ARD (Architecture Requirements Document)
+نسخه: 1.0
+هدف سند: مرجع رسمی برای کارفرما و برای استفاده مستقیم در Cursor جهت تولید Backend/Frontend و قراردادهای API
+
+1. Purpose
+
+این سند معماری، نیازمندی‌های فنی و فازبندی توسعه پلتفرم AI Mall را مشخص می‌کند.
+پلتفرم یک SaaS تجمیع‌کننده سرویس‌های هوش مصنوعی است که دسترسی به مدل‌های متن/تصویر/صوت را از طریق داشبورد حرفه‌ای و API یکپارچه فراهم می‌کند.
+تمام منطق کسب‌وکار باید در Backend باشد و Frontend صرفاً مصرف‌کننده API است.
+
+2. Product Definition
+2.1 پروژه چیست؟
+
+AI Mall یک “AI Hub + Studio-based Platform” است:
+
+Chat (Hub) برای تعامل مکالمه‌ای و تجربه عمومی AI
+
+Text Studio / Image Studio / Audio Studio به صورت بخش‌های جداگانه برای تجربه تخصصی هر نوع خروجی
+
+Coin-based billing برای کنترل مصرف و هزینه
+
+آماده برای اپ موبایل (همه چیز از طریق API)
+
+2.2 ارزش پیشنهادی
+
+دسترسی یکجا به چند مدل و سرویس AI
+
+تجربه حرفه‌ای و قابل ارائه به سازمان‌ها
+
+مدیریت هزینه مصرف (coins)
+
+قابل توسعه به ابزارها/پلاگین‌ها/ورک‌فلوها و Knowledge Base (RAG)
+
+3. Non-Negotiable Architecture Decisions
+
+Fully API-based architecture
+
+Backend & Frontend کاملاً decoupled
+
+Backend تنها منبع business logic
+
+Dashboard حرفه‌ای Enterprise-grade
+
+Streaming text chatbot
+
+Persistent memory per conversation (Conversation-level memory) (فاز بعد از دمو کامل می‌شود)
+
+Tool/plugin-based AI capabilities (اسکلت در دمو، کامل در فازهای بعد)
+
+Mobile-ready architecture برای Android/iOS بدون تغییر backend
+
+پرداخت ایرانی (Zarinpal) (فاز بعد از دمو کامل می‌شود)
+
+Admin panel با کنترل و مانیتورینگ (اسکلت در دمو، کامل در فاز بعد)
+
+4. High-Level Architecture
+4.1 Clients
+
+Web Dashboard (Next.js)
+
+Android App (Future)
+
+iOS App (Future)
+
+4.2 Backend Core
+
+API Gateway (NestJS)
+
+Auth & RBAC (Demo: ساده، فاز بعد: کامل)
+
+AI Orchestrator (routing + normalize + usage)
+
+Providers layer (OpenRouter اول، قابل توسعه به سایر providers)
+
+Studios APIs:
+
+Chat API (streaming)
+
+Text Studio API
+
+Image Studio API
+
+Audio Studio API
+
+Billing & Coins
+
+Admin (Demo: minimal)
+
+4.3 Data Layer
+
+PostgreSQL (source of truth)
+
+Redis (optional در دمو؛ فاز بعد برای rate-limit/queue)
+
+Object Storage S3 (فاز بعد برای فایل/تصاویر اگر لازم شد)
+
+5. Recommended Tech Stack
+Backend
+
+Node.js + NestJS
+
+REST APIs + SSE streaming برای chat
+
+PostgreSQL (Prisma یا TypeORM)
+
+(Optional) Redis
+
+OpenRouter integration (برای چند مدل متنی سریع)
+
+Frontend
+
+Next.js (App Router)
+
+Tailwind CSS
+
+shadcn/ui
+
+Zustand یا Redux Toolkit
+
+TanStack Query برای data fetching
+
+Dark/Light mode
+
+Mobile (Future)
+
+Flutter یا React Native
+
+Reuse backend APIs بدون تغییر
+
+6. UI/UX Structure (بخش‌ها جدا باشند)
+Mandatory Sections
+
+Overview (Dashboard)
+
+Chat AI (Streaming)
+
+Text Studio
+
+Image Studio
+
+Audio Studio
+
+Billing
+
+Settings
+
+(Admin در صورت نقش admin)
+
+UI Principles (Demo-first)
+
+ظاهر Enterprise (Sidebar، Cards، Stats)
+
+Loading states (Skeleton)
+
+Toast notifications
+
+Responsive + Dark/Light
+
+Demo-friendly (خروجی سریع و قابل نمایش)
+
+7. Backend Module Structure (Minimum + Scalable)
+src/
+  modules/
+    auth/
+    users/
+    chat/
+    text/
+    image/
+    audio/
+    billing/
+    admin/         # minimal for demo
+    providers/     # OpenRouter provider adapter
+    orchestrator/  # runAI() (basic in demo)
+  common/
+  config/
+  main.ts
+8. Core Runtime Concepts
+8.1 Provider Abstraction
+
+همه سرویس‌ها باید پشت یک Interface قرار بگیرند تا بعداً providerهای جدید اضافه شوند.
+
+Provider interface (concept):
+
+generateText()
+
+streamText()
+
+generateImage() (در دمو اگر از provider پشتیبانی شد)
+
+speechToText() / textToSpeech() (در دمو یکی انتخاب می‌شود)
+
+در نسخه ۲ روزه: حداقل Text (stream + non-stream) از OpenRouter
+
+8.2 Orchestrator (Demo: minimal)
+
+مسئول:
+
+دریافت درخواست از Chat/Text/Image/Audio
+
+فراخوانی provider مناسب
+
+ثبت usage و coin deduction
+
+استانداردسازی response
+
+9. Chat System (Streaming)
+Features (Demo)
+
+Persian/English chat
+
+Streaming response via SSE
+
+Conversation list + message history
+
+Model selection dropdown
+
+Markdown rendering
+
+Coin deduction بعد از پاسخ
+
+APIs (Demo)
+
+POST /api/v1/auth/register
+
+POST /api/v1/auth/login
+
+GET /api/v1/me
+
+POST /api/v1/conversations
+
+GET /api/v1/conversations
+
+GET /api/v1/conversations/:id/messages
+
+GET /api/v1/chat/stream?conversationId=...&model=...&message=... (SSE)
+
+SSE events (پیشنهاد استاندارد):
+
+message.delta (chunk متن)
+
+message.done
+
+usage (tokens/coincost)
+
+error
+
+10. Studios
+10.1 Text Studio (Separate)
+
+هدف دمو: تولید متن با UI حرفه‌ای
+API:
+
+POST /api/v1/text/generate
+Payload: prompt + tone + length + model
+Response: output + usage + coinCost
+
+10.2 Image Studio (Separate)
+
+هدف دمو: تولید تصویر و نمایش گالری
+API (دو حالته):
+
+اگر provider آماده است: POST /api/v1/images/generate
+
+اگر در ۲ روز ریسک بالا بود: Mock + placeholder اما UI کامل
+
+بهترین حالت برای دمو: حداقل یک provider تصویر اگر در دسترس دارید، در غیر اینصورت mock.
+
+10.3 Audio Studio (Separate)
+
+در ۲ روز فقط یکی:
+
+STT: POST /api/v1/audio/stt
+یا
+
+TTS: POST /api/v1/audio/tts
+
+توصیه دمو: STT (آپلود فایل → متن + خلاصه کوتاه)
+
+11. Billing (Coins) — Demo Version
+Rule (Demo)
+
+هر کاربر یک مقدار coin اولیه دارد (مثلاً 200)
+
+هر عملیات (chat/text/image/audio) coin ثابت یا ضریب ساده کم می‌کند
+
+اگر coins کافی نبود → خطای استاندارد + UI Toast
+
+Billing APIs (Demo)
+
+GET /api/v1/billing/balance
+
+GET /api/v1/billing/transactions (می‌تواند ساده/فیک باشد)
+
+(اختیاری) POST /api/v1/billing/topup/mock (برای دمو)
+
+در فاز بعد: Ledger کامل + Zarinpal
+
+12. Admin (Demo-minimal)
+Features
+
+مشاهده لیست کاربران (ساده)
+
+مشاهده مصرف کلی (ساده)
+
+(اختیاری) تنظیم coin کاربران
+
+APIs
+
+GET /api/v1/admin/users
+
+GET /api/v1/admin/usage
+
+13. Security Requirements (Demo vs Full)
+Demo (حداقلی اما تمیز)
+
+JWT auth
+
+basic role: user/admin
+
+input validation
+
+CORS properly configured
+
+Full (فاز بعد)
+
+RBAC کامل
+
+rate limiting
+
+audit logs
+
+secure payment callback
+
+14. Phase Plan (فازبندی رسمی)
+Phase 0 — Demo (۲ روز | Demo-first)
+
+هدف: نسخه پیاده‌سازی شده قابل ارائه با UI بسیار حرفه‌ای
+شامل:
+
+Next.js Dashboard با بخش‌های جدا: Overview/Chat/Text/Image/Audio/Billing
+
+Auth + User
+
+Chat streaming SSE + history
+
+Text studio generate
+
+Image studio UI + generate (real یا mock)
+
+Audio studio (STT یا TTS یکی)
+
+Coin deduction ساده + Billing page
+
+Admin minimal
+
+خارج از scope:
+
+Workflow engine
+
+Knowledge Base (RAG)
+
+Memory extraction پیچیده و vector db
+
+Zarinpal واقعی (اگر زمان کم است)
+
+Phase 1 — MVP (۳–۴ هفته)
+
+Ledger-based billing
+
+Zarinpal پرداخت واقعی
+
+Memory conversation-level واقعی + UI مدیریت حافظه
+
+Provider abstraction کامل‌تر + fallback پایه
+
+Tools registry اسکلت
+
+Admin بهتر + گزارش مصرف
+
+Phase 2 — Advanced SaaS (۶–۸ هفته)
+
+Workflow engine
+
+Knowledge Base (RAG) + vector db
+
+API keys
+
+Team/Org
+
+Observability (metrics/tracing)
+
+Queue برای image/audio/video async
+
+Phase 3 — Enterprise
+
+SLA, Audit logs پیشرفته
+
+Policy-based routing
+
+SDK موبایل
+
+قرارداد سازمانی
+
+15. Acceptance Criteria — Demo Delivery
+
+کارفرما باید بتواند:
+
+لاگین کند و داشبورد حرفه‌ای ببیند
+
+وارد Chat شود، مدل انتخاب کند و پاسخ استریم بگیرد
+
+Text Studio خروجی بگیرد
+
+Image Studio خروجی/گالری ببیند (real یا mock ولی UX کامل)
+
+Audio Studio کار کند (حداقل یکی)
+
+Billing نشان دهد coins کم شده و خطاها زیبا نمایش داده شوند
+
+16. Final Instruction (for Cursor + Implementation)
+
+Build the AI Mall Platform using API-first architecture, with separated studios for Text, Image, and Audio, plus a streaming Chat hub. Prioritize UI quality and demo experience for Phase 0 (2 days). Keep backend modular and scalable for future phases (memory/tools/workflows/payments).

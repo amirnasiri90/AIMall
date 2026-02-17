@@ -1,0 +1,302 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* AiFO ملایم: آبی نرم + سبز-آبی (مینت/تیل) بدون لیموی تند */
+    --background: 220 18% 98%;
+    --foreground: 220 25% 12%;
+    --card: 0 0% 100% / 0.6;
+    --card-foreground: 220 25% 12%;
+    --popover: 0 0% 100% / 0.75;
+    --popover-foreground: 220 25% 12%;
+    --primary: 212 72% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 25% 93% / 0.7;
+    --secondary-foreground: 220 25% 22%;
+    --muted: 215 20% 95% / 0.6;
+    --muted-foreground: 220 12% 44%;
+    --accent: 168 42% 68%;
+    --accent-foreground: 220 30% 12%;
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 90% / 0.5;
+    --input: 220 15% 95% / 0.6;
+    --ring: 212 72% 56% / 0.35;
+    --radius: 1rem;
+
+    /* گرادینت اصلی (آبی نرم → مینت ملایم) */
+    --gradient-primary: linear-gradient(135deg, hsl(212 72% 56%) 0%, hsl(192 55% 62%) 50%, hsl(168 42% 68%) 100%);
+    --gradient-primary-soft: linear-gradient(135deg, hsl(212 72% 56% / 0.12) 0%, hsl(168 42% 68% / 0.08) 100%);
+    --gradient-mesh-soft: radial-gradient(ellipse 50% 50% at 50% 50%, hsl(212 60% 70% / 0.08) 0%, transparent 70%);
+
+    /* Glass tokens */
+    --glass-bg: 0 0% 100% / 0.5;
+    --glass-bg-heavy: 0 0% 100% / 0.68;
+    --glass-border: 220 15% 92% / 0.45;
+    --glass-border-subtle: 220 12% 90% / 0.28;
+    --glass-shadow: 212 40% 60% / 0.04;
+    --glass-blur: 20px;
+    --glass-blur-heavy: 40px;
+
+    /* Mesh – لکه‌های گرادینت خیلی ملایم و پاستلی */
+    --mesh-1: 212 55% 72%;
+    --mesh-2: 192 40% 75%;
+    --mesh-3: 260 35% 78%;
+    --mesh-4: 168 35% 78%;
+  }
+
+  .dark {
+    --background: 224 28% 9%;
+    --foreground: 210 28% 94%;
+    --card: 224 22% 13% / 0.5;
+    --card-foreground: 210 28% 94%;
+    --popover: 224 22% 11% / 0.75;
+    --popover-foreground: 210 28% 94%;
+    --primary: 212 70% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 224 18% 22% / 0.55;
+    --secondary-foreground: 210 28% 90%;
+    --muted: 224 18% 18% / 0.5;
+    --muted-foreground: 215 18% 58%;
+    --accent: 168 38% 45%;
+    --accent-foreground: 220 20% 98%;
+    --destructive: 0 60% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 12% 18% / 0.35;
+    --input: 220 12% 16% / 0.4;
+    --ring: 212 70% 58% / 0.35;
+
+    --gradient-primary: linear-gradient(135deg, hsl(212 70% 52%) 0%, hsl(192 50% 48%) 50%, hsl(168 38% 45%) 100%);
+    --gradient-primary-soft: linear-gradient(135deg, hsl(212 70% 55% / 0.18) 0%, hsl(168 38% 45% / 0.12) 100%);
+
+    /* Glass - dark */
+    --glass-bg: 224 22% 14% / 0.45;
+    --glass-bg-heavy: 224 22% 11% / 0.65;
+    --glass-border: 220 12% 22% / 0.25;
+    --glass-border-subtle: 220 10% 20% / 0.12;
+    --glass-shadow: 0 0% 0% / 0.25;
+    --glass-blur: 24px;
+    --glass-blur-heavy: 48px;
+
+    /* Mesh dark – ملایم */
+    --mesh-1: 212 45% 35%;
+    --mesh-2: 192 35% 32%;
+    --mesh-3: 260 30% 30%;
+    --mesh-4: 168 30% 28%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "ss01";
+  }
+}
+
+/* Glass Utilities */
+@layer components {
+  .glass {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow:
+      0 1px 2px hsl(var(--glass-shadow)),
+      0 8px 24px hsl(var(--glass-shadow)),
+      inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+
+  .glass-heavy {
+    background: hsl(var(--glass-bg-heavy));
+    backdrop-filter: blur(var(--glass-blur-heavy));
+    -webkit-backdrop-filter: blur(var(--glass-blur-heavy));
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow:
+      0 1px 3px hsl(var(--glass-shadow)),
+      0 12px 32px hsl(var(--glass-shadow)),
+      inset 0 1px 0 hsl(0 0% 100% / 0.1);
+  }
+
+  .glass-subtle {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--glass-border-subtle));
+  }
+
+  .glass-input {
+    background: hsl(var(--input));
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: inset 0 1px 2px hsl(var(--glass-shadow));
+    transition: all 0.2s ease;
+  }
+
+  .glass-input:focus, .glass-input:focus-within {
+    border-color: hsl(var(--primary) / 0.5);
+    box-shadow:
+      inset 0 1px 2px hsl(var(--glass-shadow)),
+      0 0 0 3px hsl(var(--ring));
+  }
+
+  /* Animated mesh gradient background */
+  .mesh-gradient {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    background: hsl(var(--background));
+  }
+
+  .mesh-gradient::before {
+    content: '';
+    position: absolute;
+    inset: -50%;
+    width: 200%;
+    height: 200%;
+    background:
+      radial-gradient(ellipse 50% 50% at 20% 25%, hsl(var(--mesh-1) / 0.09) 0%, transparent 65%),
+      radial-gradient(ellipse 45% 45% at 80% 20%, hsl(var(--mesh-2) / 0.07) 0%, transparent 65%),
+      radial-gradient(ellipse 40% 50% at 55% 80%, hsl(var(--mesh-3) / 0.06) 0%, transparent 65%),
+      radial-gradient(ellipse 35% 45% at 15% 70%, hsl(var(--mesh-4) / 0.08) 0%, transparent 65%);
+    animation: mesh-move 30s ease-in-out infinite alternate;
+  }
+
+  @keyframes mesh-move {
+    0% { transform: translate(0%, 0%) rotate(0deg) scale(1); }
+    25% { transform: translate(5%, -3%) rotate(2deg) scale(1.02); }
+    50% { transform: translate(-3%, 5%) rotate(-1deg) scale(0.98); }
+    75% { transform: translate(3%, 2%) rotate(1.5deg) scale(1.01); }
+    100% { transform: translate(-2%, -4%) rotate(-0.5deg) scale(1); }
+  }
+
+  /* دکمه و نوار با گرادینت ملایم */
+  .bg-primary-gradient {
+    background: var(--gradient-primary);
+    color: hsl(0 0% 100%);
+  }
+  .bg-primary-gradient:hover {
+    filter: brightness(1.05);
+  }
+  .bg-primary-soft {
+    background: var(--gradient-primary-soft);
+  }
+
+  /* سوییچ بین بخش‌ها — افکت محو شونده (fade) نرم */
+  .page-transition {
+    animation: page-fade-dissolve 0.35s ease-in-out both;
+  }
+  @keyframes page-fade-dissolve {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Specular highlight on glass */
+  .glass-shine {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-shine::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      135deg,
+      hsl(0 0% 100% / 0.12) 0%,
+      hsl(0 0% 100% / 0.04) 30%,
+      transparent 50%
+    );
+    pointer-events: none;
+    border-radius: inherit;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.35);
+}
+
+/* Smooth transitions for theme switching */
+*, *::before, *::after {
+  transition-property: background-color, border-color, box-shadow;
+  transition-duration: 0.15s;
+  transition-timing-function: ease;
+}
+
+/* Selection – ملایم */
+::selection {
+  background: hsl(var(--primary) / 0.18);
+  color: inherit;
+}
+
+/* Prevent horizontal scroll on mobile */
+html, body {
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* PWA / mobile safe areas (notch, home indicator) */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+.safe-area-inset-top { padding-top: env(safe-area-inset-top, 0); }
+.safe-area-inset-bottom { padding-bottom: env(safe-area-inset-bottom, 0); }
+
+/* Minimum touch target for key actions on touch devices */
+@media (pointer: coarse) {
+  .touch-target-min button:not(.no-touch-target),
+  .touch-target-min a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* جلوگیری از زوم خودکار iOS هنگام فوکوس روی input (فونت زیر 16px باعث زوم می‌شود) */
+@media (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+  input[type="search"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="password"] {
+    font-size: 16px !important;
+  }
+}
+
+/* بلوک‌های انگلیسی در صفحهٔ RTL — جهت و چیدمان متن */
+.dir-ltr {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+}
+
+/* PWA standalone: غیرفعال کردن کامل زوم و ژست‌های pinch/double-tap */
+html.pwa-standalone {
+  touch-action: pan-x pan-y;
+}
+html.pwa-standalone body {
+  touch-action: pan-x pan-y;
+}
