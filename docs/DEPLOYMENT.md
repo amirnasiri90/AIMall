@@ -164,18 +164,42 @@ cd /path/to/AIMall
 
 ### خطای `Cannot find module '.../dist/main'` یا `.../dist/main.js'`
 
-یعنی پوشهٔ `dist` وجود ندارد یا خالی است (build روی سرور اجرا نشده یا با خطا روبه‌رو شده است).
+دو احتمال دارد: (۱) پوشهٔ `dist` ساخته نشده یا خالی است، (۲) PM2 از مسیر (cwd) اشتباه اجرا می‌شود و فایل را پیدا نمی‌کند.
 
-**راه‌حل روی سرور:** حتماً داخل پوشهٔ بک‌اند build بگیرید و فقط در صورت موفق بودن خروجی، PM2 را ری‌استارت کنید:
+**گام ۱ – بررسی روی سرور:** ببینید فایل واقعاً ساخته شده یا نه:
 
 ```bash
-cd ~/AIMall/backend
-npm run build:prod
-# اگر خطایی ندید و dist/main.js ساخته شد:
-pm2 restart aimall-backend
+ls -la /root/AIMall/backend/dist/
 ```
 
-اگر `npm run build:prod` خطا داد، همان خطا را برطرف کنید (مثلاً وابستگی‌ها با `npm ci`، یا مایگریشن با `npx prisma generate`).
+اگر `main.js` نبود، از داخل پوشهٔ بک‌اند دوباره build بگیرید (اگر build خطا ندهد، اسکریپت خودش وجود `dist/main.js` را چک می‌کند):
+
+```bash
+cd /root/AIMall/backend
+rm -rf dist
+npm run build
+ls -la dist/main.js
+```
+
+اگر اینجا `main.js` دیده شد ولی PM2 هنوز خطا می‌دهد، یعنی **PM2 با مسیر کاری (cwd) اشتباه بالا آمده**. در آن صورت از گام ۲ استفاده کنید.
+
+**گام ۲ – بالا آوردن PM2 با مسیر درست (پیشنهادی):** از ریشهٔ پروژه با فایل `ecosystem.config.cjs` اجرا کنید تا cwd برای بک‌اند حتماً همان پوشهٔ backend باشد:
+
+```bash
+cd /root/AIMall
+pm2 delete aimall-backend 2>/dev/null || true
+pm2 start ecosystem.config.cjs --only aimall-backend
+pm2 save
+```
+
+اگر فرانت را هم با همین فایل می‌خواهید مدیریت کنید:
+
+```bash
+cd /root/AIMall
+pm2 delete aimall-backend aimall-frontend 2>/dev/null || true
+pm2 start ecosystem.config.cjs
+pm2 save
+```
 
 ---
 

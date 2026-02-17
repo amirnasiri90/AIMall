@@ -2,7 +2,7 @@
   "name": "aimall-backend",
   "version": "1.0.0",
   "scripts": {
-    "build": "nest build",
+    "build": "nest build && node -e \"require('fs').accessSync('dist/main.js')\"",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "build:prod": "npm run clean && npm run build",
     "start": "nest start",
