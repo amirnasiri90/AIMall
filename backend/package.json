@@ -2,8 +2,8 @@
   "name": "aimall-backend",
   "version": "1.0.0",
   "scripts": {
-    "build": "nest build && node -e \"require('fs').accessSync('dist/main.js')\"",
-    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npx tsc -p tsconfig.build.json && node -e \"require('fs').accessSync('dist/main.js')\"",
+    "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); try{fs.unlinkSync('tsconfig.build.tsbuildinfo')}catch(e){}\"",
     "build:prod": "npm run clean && npm run build",
     "start": "nest start",
     "start:dev": "nest start --watch",
