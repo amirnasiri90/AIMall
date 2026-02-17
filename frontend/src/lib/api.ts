@@ -311,7 +311,7 @@ export const api = {
   previewPayment: (packageId: string, discountCode?: string) =>
     request('/billing/payment/preview', { method: 'POST', body: JSON.stringify({ packageId, discountCode: discountCode || undefined }) }),
   createPayment: (packageId: string, discountCode?: string) =>
-    request('/billing/payment/create', { method: 'POST', body: JSON.stringify({ packageId, discountCode: discountCode || undefined }) }),
+    request('/billing/payment/create', { method: 'POST', body: JSON.stringify({ packageId: String(packageId), discountCode: discountCode || undefined }) }),
   getPaymentOrders: (page?: number, limit?: number) =>
     request(`/billing/payment/orders?page=${page || 1}&limit=${limit || 20}`),
   getLedgerSummary: () => request('/billing/ledger/summary'),

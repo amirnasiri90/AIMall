@@ -437,10 +437,10 @@ export default function BillingPage() {
       </Tabs>
 
       <Dialog open={!!invoiceDialog} onOpenChange={(open) => !open && setInvoiceDialog(null)}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg" aria-describedby="billing-invoice-desc">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" /> صورت‌حساب و پرداخت</DialogTitle>
-            <DialogDescription>جزئیات فاکتور قبل از پرداخت</DialogDescription>
+            <DialogDescription id="billing-invoice-desc">جزئیات فاکتور قبل از پرداخت</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             {invoiceDialog?.pkg && (
@@ -504,7 +504,7 @@ export default function BillingPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setInvoiceDialog(null)}>انصراف</Button>
             <Button
-              onClick={() => invoiceDialog?.pkg?.id && handlePayment(invoiceDialog.pkg.id, discountCode.trim() || undefined)}
+              onClick={() => invoiceDialog?.pkg?.id && handlePayment(String(invoiceDialog.pkg.id), discountCode.trim() || undefined)}
               disabled={!invoiceDialog?.pkg?.id || payLoading === invoiceDialog?.pkg?.id}
             >
               {payLoading === invoiceDialog?.pkg?.id ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <CreditCard className="me-2 h-4 w-4" />}
