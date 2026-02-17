@@ -30,7 +30,7 @@ log_info "Prisma generate و migrate..."
 (cd "$PROJECT_ROOT/backend" && npx prisma migrate deploy) || log_warn "migrate deploy خطا داد."
 
 log_info "Build Backend..."
-(cd "$PROJECT_ROOT/backend" && npm run build)
+(cd "$PROJECT_ROOT/backend" && (npm run build:prod 2>/dev/null || (rm -rf dist && npm run build)))
 log_info "Build Frontend..."
 (cd "$PROJECT_ROOT/frontend" && npm run build)
 

@@ -160,6 +160,110 @@ cd /path/to/AIMall
 
 ---
 
+## عیب‌یابی
+
+### خطای `Cannot find module '.../dist/main'` یا `.../dist/main.js'`
+
+یعنی پوشهٔ `dist` وجود ندارد یا خالی است (build روی سرور اجرا نشده یا با خطا روبه‌رو شده است).
+
+**راه‌حل روی سرور:** حتماً داخل پوشهٔ بک‌اند build بگیرید و فقط در صورت موفق بودن خروجی، PM2 را ری‌استارت کنید:
+
+```bash
+cd ~/AIMall/backend
+npm run build:prod
+# اگر خطایی ندید و dist/main.js ساخته شد:
+pm2 restart aimall-backend
+```
+
+اگر `npm run build:prod` خطا داد، همان خطا را برطرف کنید (مثلاً وابستگی‌ها با `npm ci`، یا مایگریشن با `npx prisma generate`).
+
+---
+
+### خطای `Cannot find module './dto/register.dto'` (بک‌اند استارت نمی‌شود)
+
+اگر در لاگ PM2 (`pm2 logs aimall-backend`) این خطا را می‌بینید، معمولاً به‌خاطر build قدیمی یا ناقص است؛ پوشهٔ `dist` یا کامل ساخته نشده یا فایل‌های dto در آن نیستند.
+
+**راه‌حل روی سرور:** یک بار build تمیز انجام دهید و بک‌اند را ری‌استارت کنید:
+
+```bash
+cd ~/AIMall/backend
+npm run build:prod
+pm2 restart aimall-backend
+```
+
+(اسکریپت `build:prod` اول پوشهٔ `dist` را پاک می‌کند و بعد دوباره build می‌گیرد.)
+
+اگر اسکریپت `build:prod` نبود، دستی:
+
+```bash
+cd ~/AIMall/backend
+rm -rf dist
+npm run build
+pm2 restart aimall-backend
+```
+
+بعد از آن `pm2 logs aimall-backend` را چک کنید؛ اگر خطای دیگری بود، همان را برطرف کنید.
+
+---
+
+### خطای 502 Bad Gateway روی `/api/v1/auth/login` (یا هر endpoint دیگر)
+
+یعنی Nginx درخواست را به بک‌اند فرستاده ولی پاسخی نگرفته: یا بک‌اند خاموش/کرش است، یا روی پورت دیگری گوش می‌دهد.
+
+**۱. وضعیت بک‌اند و پورت**
+
+روی سرور اجرا کنید:
+
+```bash
+pm2 list
+pm2 logs aimall-backend --lines 50
+```
+
+- اگر `aimall-backend` وضعیت **errored** یا مدام **restart** است، لاگ را بخوانید و خطا را برطرف کنید (مثلاً build تمیز و ری‌استارت).
+- اگر **online** است، بررسی کنید بک‌اند روی چه پورتی گوش می‌دهد (معمولاً ۳۰۰۱):
+
+```bash
+grep -E '^PORT=' ~/AIMall/backend/.env
+ss -tlnp | grep 3001
+# یا
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3001/api/v1/health
+```
+
+اگر پورت در `.env` چیز دیگری است (مثلاً ۳۰۰۲)، باید در Nginx همان پورت را در `proxy_pass` استفاده کنید.
+
+**۲. تنظیم Nginx**
+
+فایل کانفیگ (مثلاً `/etc/nginx/sites-available/two-domains` یا همانی که برای `panel.aifoapp.ir` استفاده می‌کنید) باید چیزی شبیه این داشته باشد:
+
+```nginx
+location /api/v1 {
+  proxy_pass http://127.0.0.1:3001;
+  proxy_http_version 1.1;
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+پورت `3001` باید با `PORT` در `backend/.env` یکی باشد. بعد از تغییر:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+**۳. تست مستقیم بک‌اند**
+
+اگر از روی خود سرور به بک‌اند درخواست بزنید و ۲۰۰ بگیرید، مشکل از Nginx یا شبکه است:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3001/api/v1/auth/login -X POST -H "Content-Type: application/json" -d '{}'
+```
+
+(۴۰۰ یا ۴۲۲ یعنی بک‌اند جواب داده؛ ۵۰۲ یا اتصال قطع یعنی بک‌اند جواب نمی‌دهد.)
+
+---
+
 ## خلاصهٔ تفکیک آینده (سه سرور)
 
 1. **سرور دیتابیس:** یک سرور فقط برای PostgreSQL (یا استفاده از سرویس ابری). همان دیتابیس و volume فعلی را نگه دارید؛ فقط در بقیهٔ سرورها `DATABASE_URL` را به آدرس این سرور/سرویس تغییر دهید.
