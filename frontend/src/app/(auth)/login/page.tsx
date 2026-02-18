@@ -11,21 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
+import { normalizePhone, toPersianDigits } from '@/lib/phone';
 import { useAuthStore } from '@/lib/store';
 import { useLogoUrl } from '@/lib/use-branding';
-
-const FA = '۰۱۲۳۴۵۶۷۸۹';
-function normalizePhone(v: string): string {
-  let s = v.replace(/[۰-۹]/g, (d) => String(FA.indexOf(d)));
-  const d = s.replace(/\D/g, '');
-  if (d.length === 11 && d.startsWith('09')) return d;
-  if (d.length === 10 && d.startsWith('9')) return '0' + d;
-  if (d.length === 12 && d.startsWith('989')) return '0' + d.slice(2);
-  return d.length === 11 ? d : v;
-}
-function toPersianDigits(n: number): string {
-  return String(n).replace(/\d/g, (d) => FA[+d]);
-}
 
 export default function LoginPage() {
   const logoUrl = useLogoUrl();
@@ -40,8 +28,13 @@ export default function LoginPage() {
   const [otpTotalSeconds, setOtpTotalSeconds] = useState<number>(120);
   const [loading, setLoading] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
+  const [fieldError, setFieldError] = useState<Record<string, string>>({});
   const { setAuth } = useAuthStore();
   const router = useRouter();
+
+  const clearFieldError = (key: string) => {
+    setFieldError((prev) => (prev[key] ? { ...prev, [key]: '' } : prev));
+  };
 
   useEffect(() => {
     if (!otpExpiresAt || !otpSent) return;
@@ -60,13 +53,16 @@ export default function LoginPage() {
     if (usePhone) {
       const normalized = normalizePhone(phone.trim());
       if (normalized.length !== 11 || !normalized.startsWith('09')) {
+        setFieldError((p) => ({ ...p, loginPhone: 'شماره موبایل معتبر وارد کنید (مثال: 09123456789)' }));
         toast.error('شماره موبایل معتبر وارد کنید (مثال: 09123456789)');
         return;
       }
       if (!password) {
+        setFieldError((p) => ({ ...p, loginPassword: 'رمز عبور را وارد کنید' }));
         toast.error('رمز عبور را وارد کنید');
         return;
       }
+      setFieldError({});
       setLoading(true);
       try {
         const data = await api.login({ phone: normalized, password });
@@ -81,9 +77,14 @@ export default function LoginPage() {
       return;
     }
     if (!email.trim() || !password) {
+      setFieldError({
+        loginPhone: !email.trim() ? 'ایمیل را وارد کنید' : '',
+        loginPassword: !password ? 'رمز عبور را وارد کنید' : '',
+      });
       toast.error('ایمیل و رمز عبور را وارد کنید');
       return;
     }
+    setFieldError({});
     setLoading(true);
     try {
       const data = await api.login({ email: email.trim(), password });
@@ -100,9 +101,11 @@ export default function LoginPage() {
   const handleSendOtp = async () => {
     const normalized = normalizePhone(phone.trim());
     if (normalized.length !== 11 || !normalized.startsWith('09')) {
+      setFieldError((p) => ({ ...p, loginPhone: 'شماره موبایل معتبر وارد کنید (مثال: 09123456789)' }));
       toast.error('شماره موبایل معتبر وارد کنید (مثال: 09123456789)');
       return;
     }
+    setFieldError((p) => ({ ...p, loginPhone: '' }));
     setOtpLoading(true);
     try {
       const res = await api.sendOtp(normalized);
@@ -155,9 +158,11 @@ export default function LoginPage() {
     e.preventDefault();
     const normalized = normalizePhone(phone.trim());
     if (!otpCode.trim() || otpCode.trim().length < 5) {
+      setFieldError((p) => ({ ...p, loginOtp: 'کد دریافتی را وارد کنید' }));
       toast.error('کد دریافتی را وارد کنید');
       return;
     }
+    setFieldError({});
     setLoading(true);
     try {
       const data = await api.loginWithOtp(normalized, otpCode.trim());
@@ -182,7 +187,7 @@ export default function LoginPage() {
         <CardTitle className="text-xl sm:text-2xl">ورود به AiFO</CardTitle>
         <CardDescription className="text-xs sm:text-sm">همه‌فن‌حریف اینجاست — با رمز عبور یا کد یکبارمصرف دقیق و سریع وارد شو</CardDescription>
       </CardHeader>
-      <Tabs value={mode} onValueChange={(v) => { setMode(v as 'password' | 'otp'); setOtpSent(false); setOtpCode(''); setOtpExpiresAt(null); setOtpSecondsLeft(null); }}>
+      <Tabs value={mode} onValueChange={(v) => { setMode(v as 'password' | 'otp'); setOtpSent(false); setOtpCode(''); setOtpExpiresAt(null); setOtpSecondsLeft(null); setFieldError({}); }}>
         <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
           <TabsList className="grid w-full grid-cols-2 h-auto p-0.5 min-h-[44px]">
             <TabsTrigger value="password" className="text-xs sm:text-sm py-3 px-2 min-h-[44px]">ورود با رمز</TabsTrigger>
@@ -192,14 +197,16 @@ export default function LoginPage() {
           {mode === 'password' && (
             <form onSubmit={handleLoginPassword} className="space-y-4">
               <div className="space-y-2">
-                <Label>شماره موبایل یا ایمیل</Label>
+                <Label htmlFor="login-phone">شماره موبایل یا ایمیل</Label>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Input
+                    id="login-phone"
                     dir="ltr"
                     className="text-left min-h-[48px]"
                     placeholder="09123456789 یا you@example.com"
                     value={phone || email}
                     onChange={(e) => {
+                      clearFieldError('loginPhone');
                       const v = e.target.value;
                       if (/^[\d۰-۹\s\-]+$/.test(v) || v.startsWith('09') || v === '') {
                         setPhone(v);
@@ -210,14 +217,37 @@ export default function LoginPage() {
                       }
                     }}
                     required
+                    aria-invalid={!!fieldError.loginPhone}
+                    aria-describedby={fieldError.loginPhone ? 'login-phone-error' : undefined}
                   />
                 </div>
+                {fieldError.loginPhone && (
+                  <p id="login-phone-error" role="alert" className="text-sm text-destructive">
+                    {fieldError.loginPhone}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">رمز عبور</Label>
-                <Input id="password" type="password" placeholder="••••••" value={password} onChange={(e) => setPassword(e.target.value)} required dir="ltr" className="text-left min-h-[48px]" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••"
+                  value={password}
+                  onChange={(e) => { clearFieldError('loginPassword'); setPassword(e.target.value); }}
+                  required
+                  dir="ltr"
+                  className="text-left min-h-[48px]"
+                  aria-invalid={!!fieldError.loginPassword}
+                  aria-describedby={fieldError.loginPassword ? 'login-password-error' : undefined}
+                />
+                {fieldError.loginPassword && (
+                  <p id="login-password-error" role="alert" className="text-sm text-destructive">
+                    {fieldError.loginPassword}
+                  </p>
+                )}
               </div>
-              <Button type="submit" className="w-full min-h-[48px] text-base" disabled={loading}>
+              <Button type="submit" className="w-full min-h-[48px] text-base" disabled={loading} aria-busy={loading}>
                 {loading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                 ورود
               </Button>
@@ -227,15 +257,18 @@ export default function LoginPage() {
           {mode === 'otp' && (
             <>
               <div className="space-y-2">
-                <Label>شماره موبایل</Label>
+                <Label htmlFor="login-otp-phone">شماره موبایل</Label>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Input
+                    id="login-otp-phone"
                     dir="ltr"
                     className="text-left flex-1 min-w-0 min-h-[48px]"
                     placeholder="09123456789"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                    onChange={(e) => { clearFieldError('loginPhone'); setPhone(e.target.value.replace(/\D/g, '').slice(0, 11)); }}
                     disabled={otpSent}
+                    aria-invalid={!!fieldError.loginPhone}
+                    aria-describedby={fieldError.loginPhone ? 'login-otp-phone-error' : undefined}
                   />
                   {!otpSent ? (
                     <Button type="button" variant="outline" onClick={handleSendOtp} disabled={otpLoading} className="shrink-0 min-h-[48px]">
@@ -243,19 +276,32 @@ export default function LoginPage() {
                     </Button>
                   ) : null}
                 </div>
+                {fieldError.loginPhone && (
+                  <p id="login-otp-phone-error" role="alert" className="text-sm text-destructive">
+                    {fieldError.loginPhone}
+                  </p>
+                )}
               </div>
               {otpSent && (
                 <form onSubmit={handleLoginOtp} className="space-y-4">
                   <div className="space-y-2">
-                    <Label>کد ارسال‌شده</Label>
+                    <Label htmlFor="login-otp-code">کد ارسال‌شده</Label>
                     <Input
+                      id="login-otp-code"
                       dir="ltr"
                       className="text-left text-lg tracking-widest min-h-[48px]"
                       placeholder="۱۲۳۴۵"
                       value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      onChange={(e) => { clearFieldError('loginOtp'); setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6)); }}
                       maxLength={6}
+                      aria-invalid={!!fieldError.loginOtp}
+                      aria-describedby={fieldError.loginOtp ? 'login-otp-code-error' : undefined}
                     />
+                    {fieldError.loginOtp && (
+                      <p id="login-otp-code-error" role="alert" className="text-sm text-destructive">
+                        {fieldError.loginOtp}
+                      </p>
+                    )}
                   </div>
                   {otpSecondsLeft !== null && (
                     <div className="space-y-2">
@@ -282,7 +328,7 @@ export default function LoginPage() {
                       </div>
                     </div>
                   )}
-                  <Button type="submit" className="w-full min-h-[48px] text-base" disabled={loading || (otpSecondsLeft !== null && otpSecondsLeft <= 0)}>
+                  <Button type="submit" className="w-full min-h-[48px] text-base" disabled={loading || (otpSecondsLeft !== null && otpSecondsLeft <= 0)} aria-busy={loading}>
                     {loading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                     ورود با کد
                   </Button>

@@ -5,8 +5,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import { toast } from 'sonner';
 import { useAuthStore, useHydrateAuth } from '@/lib/store';
-import { api } from '@/lib/api';
+import { api, setOnUnauthorized } from '@/lib/api';
 import { useLogoUrl } from '@/lib/use-branding';
 import { GenieRail } from '@/components/layout/genie-rail';
 import { MobileSidebar } from '@/components/layout/mobile-sidebar';
@@ -21,8 +22,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Menu, Coins, User, Settings, LogOut, Sun, Moon } from 'lucide-react';
+import { Menu, Coins, User, Settings, LogOut, Sun, Moon, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { IntentGuideDialog } from '@/components/intent-guide-dialog';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   useHydrateAuth();
@@ -33,6 +35,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [loading, setLoading] = useState(true);
   const [showRetry, setShowRetry] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [intentGuideOpen, setIntentGuideOpen] = useState(false);
   const logoUrl = useLogoUrl();
 
   const handleLogout = () => {
@@ -44,6 +47,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     logout();
     router.replace('/login');
   };
+
+  useEffect(() => {
+    if (!_hydrated || !token) {
+      setOnUnauthorized(null);
+      return;
+    }
+    setOnUnauthorized(() => {
+      logout();
+      toast.error('نشست منقضی شده. لطفاً دوباره وارد شوید.');
+      router.replace('/login');
+    });
+    return () => setOnUnauthorized(null);
+  }, [_hydrated, token, logout, router]);
 
   useEffect(() => {
     if (!_hydrated) return;
@@ -64,28 +80,46 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setLoading(false);
       })
       .catch(() => {
-        logout();
-        router.replace('/login');
+        setLoading(false);
+        // در صورت ۴۰۱، onUnauthorized قبلاً logout و redirect انجام داده
       })
       .finally(() => clearTimeout(showRetryTimer));
     return () => clearTimeout(showRetryTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [_hydrated, token, router, setUser, logout]);
 
-  if (!_hydrated || (token && loading)) {
+  const retryGetMe = () => {
+    setLoading(true);
+    setShowRetry(false);
+    api.getMe()
+      .then((userData) => {
+        setUser(userData);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  };
+
+  if (!_hydrated || (token && !user)) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-6 bg-background p-4">
-        <div className="space-y-4 w-64">
-          <Skeleton className="h-8 w-full rounded-xl" />
-          <Skeleton className="h-4 w-3/4 rounded-lg" />
-          <Skeleton className="h-4 w-1/2 rounded-lg" />
-        </div>
+        {(loading || !showRetry) && (
+          <div className="space-y-4 w-64">
+            <Skeleton className="h-8 w-full rounded-xl" />
+            <Skeleton className="h-4 w-3/4 rounded-lg" />
+            <Skeleton className="h-4 w-1/2 rounded-lg" />
+          </div>
+        )}
         {showRetry && (
           <div className="text-center space-y-3">
             <p className="text-sm text-muted-foreground">اتصال به سرور طول کشید.</p>
-            <Button variant="outline" onClick={goToLogin}>
-              ورود مجدد
-            </Button>
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Button variant="default" onClick={retryGetMe}>
+                تلاش مجدد
+              </Button>
+              <Button variant="outline" onClick={goToLogin}>
+                ورود مجدد
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -98,6 +132,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className={cn('flex flex-col bg-background overflow-x-hidden h-screen', isChat && 'overflow-hidden')}>
       <ProfileSelectModal />
       <UpdateNotice />
+      <IntentGuideDialog open={intentGuideOpen} onOpenChange={setIntentGuideOpen} />
       {/* Mobile top bar: only on small screens — min 48px height for touch */}
       <header className="flex md:hidden h-14 min-h-[48px] flex-shrink-0 items-center justify-between gap-2 px-3 sm:px-4 border-b border-border bg-background/80 backdrop-blur-sm safe-area-inset-top">
         <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" onClick={() => setMobileMenuOpen(true)} aria-label="منو">
@@ -110,6 +145,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span className="font-bold text-sm truncate">AiFO</span>
         </Link>
         <div className="flex items-center gap-1 shrink-0 min-w-0">
+          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" onClick={() => setIntentGuideOpen(true)} aria-label="میخوای چه کار کنی؟">
+            <Sparkles className="h-5 w-5" />
+          </Button>
           <Link
             href="/billing"
             className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-muted/80 transition-colors min-w-0"
@@ -157,7 +195,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <MobileSidebar open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
       <div className={cn('flex flex-1 min-h-0 min-w-0 p-2 sm:p-4 gap-2 sm:gap-4', isChat && 'overflow-hidden')}>
         <aside className="hidden md:flex flex-shrink-0 min-h-0 self-stretch">
-          <GenieRail />
+          <GenieRail onOpenIntentGuide={() => setIntentGuideOpen(true)} />
         </aside>
         <main
           className={cn(

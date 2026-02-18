@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/lib/store';
 import { api } from '@/lib/api';
+import { normalizePhone, isValidIranMobile } from '@/lib/phone';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -37,11 +38,16 @@ export default function SettingsPage() {
 
   const saveProfile = async () => {
     if (!user) return;
+    const phoneTrimmed = form.phone.trim();
+    if (phoneTrimmed && !isValidIranMobile(phoneTrimmed)) {
+      toast.error('شماره موبایل معتبر وارد کنید (مثال: 09123456789)');
+      return;
+    }
     setSaving(true);
     try {
       await api.updateProfile({
         name: form.name.trim() || undefined,
-        phone: form.phone.trim() || undefined,
+        phone: phoneTrimmed ? normalizePhone(phoneTrimmed) : undefined,
       });
       const me = await api.getMe();
       setUser(me);
@@ -91,7 +97,7 @@ export default function SettingsPage() {
                 <X className="h-4 w-4 me-2" />
                 انصراف
               </Button>
-              <Button size="sm" onClick={saveProfile} disabled={saving}>
+              <Button size="sm" onClick={saveProfile} disabled={saving} aria-busy={saving}>
                 {saving ? <Loader2 className="h-4 w-4 me-2 animate-spin" /> : <Check className="h-4 w-4 me-2" />}
                 ذخیره
               </Button>
@@ -119,8 +125,11 @@ export default function SettingsPage() {
                 <Input
                   id="profile-phone"
                   value={form.phone}
-                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                  placeholder="۰۹۱۲۳۴۵۶۷۸۹"
+                  onChange={(e) => {
+                    const digits = normalizePhone(e.target.value).replace(/\D/g, '').slice(0, 11);
+                    setForm((f) => ({ ...f, phone: digits }));
+                  }}
+                  placeholder="09123456789"
                   dir="ltr"
                   className="text-left"
                 />

@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -28,7 +29,10 @@ const categoryLabel: Record<string, string> = {
   TECHNICAL: 'فنی',
 };
 
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024; // 5 MB
+
 export default function SupportPage() {
+  const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -36,7 +40,12 @@ export default function SupportPage() {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [fieldError, setFieldError] = useState<Record<string, string>>({});
   const queryClient = useQueryClient();
+
+  const clearFieldError = (key: string) => {
+    setFieldError((prev) => (prev[key] ? { ...prev, [key]: '' } : prev));
+  };
 
   const { data: tickets, isLoading } = useQuery({
     queryKey: ['support-tickets', statusFilter === 'all' ? undefined : statusFilter],
@@ -44,14 +53,19 @@ export default function SupportPage() {
   });
 
   const handleCreate = async () => {
-    if (!subject.trim() || !body.trim()) {
-      toast.error('موضوع و متن پیام را وارد کنید');
+    const subjectErr = !subject.trim() ? 'موضوع را وارد کنید' : '';
+    const bodyErr = !body.trim() ? 'متن پیام را وارد کنید' : '';
+    let attachmentErr = '';
+    if (attachment) {
+      if (!['image/png', 'image/jpeg', 'image/jpg'].includes(attachment.type)) attachmentErr = 'فقط فایل‌های PNG و JPG مجاز است';
+      else if (attachment.size > MAX_ATTACHMENT_BYTES) attachmentErr = 'حداکثر حجم پیوست ۵ مگابایت است';
+    }
+    if (subjectErr || bodyErr || attachmentErr) {
+      setFieldError({ ticketSubject: subjectErr, ticketBody: bodyErr, ticketAttachment: attachmentErr });
+      toast.error(subjectErr || bodyErr || attachmentErr);
       return;
     }
-    if (attachment && !['image/png', 'image/jpeg', 'image/jpg'].includes(attachment.type)) {
-      toast.error('فقط فایل‌های PNG و JPG مجاز است');
-      return;
-    }
+    setFieldError({});
     setCreating(true);
     try {
       const ticket = await api.createTicket(
@@ -67,7 +81,7 @@ export default function SupportPage() {
       setCategory('CONSULTING_SALES');
       setAttachment(null);
       queryClient.invalidateQueries({ queryKey: ['support-tickets'] });
-      window.location.href = `/support/${ticket.id}`;
+      router.push(`/support/${ticket.id}`);
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -139,7 +153,7 @@ export default function SupportPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) setFieldError({}); }}>
         <DialogContent className="sm:max-w-md">
           <DialogDescription className="sr-only">
             فرم ثبت تیکت جدید. موضوع و متن اولیه را وارد کنید.
@@ -164,41 +178,63 @@ export default function SupportPage() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="subject">موضوع</Label>
+              <Label htmlFor="ticket-subject">موضوع</Label>
               <Input
-                id="subject"
+                id="ticket-subject"
                 placeholder="مثال: مشکل در پرداخت"
                 value={subject}
-                onChange={(e) => setSubject(e.target.value)}
+                onChange={(e) => { clearFieldError('ticketSubject'); setSubject(e.target.value); }}
                 className="mt-1"
+                aria-invalid={!!fieldError.ticketSubject}
+                aria-describedby={fieldError.ticketSubject ? 'ticket-subject-error' : undefined}
               />
+              {fieldError.ticketSubject && (
+                <p id="ticket-subject-error" role="alert" className="text-sm text-destructive mt-1">
+                  {fieldError.ticketSubject}
+                </p>
+              )}
             </div>
             <div>
-              <Label htmlFor="body">متن پیام</Label>
+              <Label htmlFor="ticket-body">متن پیام</Label>
               <textarea
-                id="body"
+                id="ticket-body"
                 placeholder="شرح مشکل یا درخواست..."
                 value={body}
-                onChange={(e) => setBody(e.target.value)}
+                onChange={(e) => { clearFieldError('ticketBody'); setBody(e.target.value); }}
                 rows={4}
                 className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm mt-1"
+                aria-invalid={!!fieldError.ticketBody}
+                aria-describedby={fieldError.ticketBody ? 'ticket-body-error' : undefined}
               />
+              {fieldError.ticketBody && (
+                <p id="ticket-body-error" role="alert" className="text-sm text-destructive mt-1">
+                  {fieldError.ticketBody}
+                </p>
+              )}
             </div>
             <div>
-              <Label>پیوست تصویر (اختیاری)</Label>
+              <Label htmlFor="ticket-attachment">پیوست تصویر (اختیاری)</Label>
               <p className="text-xs text-muted-foreground mt-0.5">فرمت‌های مجاز: PNG، JPG — حداکثر ۵ مگابایت</p>
               <Input
+                id="ticket-attachment"
                 type="file"
                 accept=".png,.jpg,.jpeg,image/png,image/jpeg"
                 className="mt-1"
-                onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
+                onChange={(e) => { clearFieldError('ticketAttachment'); setAttachment(e.target.files?.[0] ?? null); }}
+                aria-invalid={!!fieldError.ticketAttachment}
+                aria-describedby={fieldError.ticketAttachment ? 'ticket-attachment-error' : undefined}
               />
               {attachment && <p className="text-xs text-muted-foreground mt-1">{attachment.name}</p>}
+              {fieldError.ticketAttachment && (
+                <p id="ticket-attachment-error" role="alert" className="text-sm text-destructive mt-1">
+                  {fieldError.ticketAttachment}
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>انصراف</Button>
-            <Button onClick={handleCreate} disabled={creating}>
+            <Button onClick={handleCreate} disabled={creating} aria-busy={creating}>
               {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               <span className="ms-2">ثبت تیکت</span>
             </Button>

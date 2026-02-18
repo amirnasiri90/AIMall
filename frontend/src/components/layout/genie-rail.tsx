@@ -27,6 +27,7 @@ import {
   LogOut,
   Sun,
   Moon,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLogoUrl } from '@/lib/use-branding';
@@ -56,7 +57,7 @@ const navItems = [
   { href: '/support', label: 'پشتیبانی', icon: LifeBuoy },
 ];
 
-export function GenieRail() {
+export function GenieRail({ onOpenIntentGuide }: { onOpenIntentGuide?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const logoUrl = useLogoUrl();
@@ -160,6 +161,19 @@ export function GenieRail() {
         )}
       </nav>
       <div className="flex-shrink-0 flex flex-col gap-2 pt-2 border-t border-border/50">
+        {onOpenIntentGuide && (
+          <button
+            type="button"
+            onClick={onOpenIntentGuide}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors text-foreground w-full text-right"
+            title="میخوای چه کار کنی؟"
+          >
+            <span className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-primary" />
+            </span>
+            <span className="text-sm font-medium truncate flex-1">راهنما</span>
+          </button>
+        )}
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted border border-border text-xs font-medium text-foreground">
           <Coins className="w-4 h-4 text-amber-500 flex-shrink-0" />
           <span className="truncate">{user?.coins ?? 0} سکه</span>

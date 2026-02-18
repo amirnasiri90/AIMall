@@ -2,7 +2,8 @@
 # ابتدا یک بار init و مایگریشن را اجرا کنید؛ بعد فقط این اسکریپت را برای استارت سرور بزنید.
 
 $ErrorActionPreference = "Stop"
-$BackendRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+# PSScriptRoot = backend\scripts → BackendRoot = backend
+$BackendRoot = Split-Path $PSScriptRoot -Parent
 if (-not $BackendRoot) { $BackendRoot = Join-Path (Get-Location) "backend" }
 $Bin = Join-Path $BackendRoot "node_modules\@embedded-postgres\windows-x64\native\bin"
 $DataDir = Join-Path $BackendRoot "data\pg"

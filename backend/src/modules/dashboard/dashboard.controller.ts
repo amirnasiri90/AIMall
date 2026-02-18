@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import { ApiKeyAuthGuard } from '../api-keys/api-key-auth.guard';
@@ -22,5 +22,10 @@ export class DashboardController {
   @Get('menu-flags')
   getMenuFlags() {
     return this.dashboardService.getMenuFlags();
+  }
+
+  @Post('intent/classify')
+  async classifyIntent(@Body('text') text: string) {
+    return this.dashboardService.classifyIntent(text || '');
   }
 }

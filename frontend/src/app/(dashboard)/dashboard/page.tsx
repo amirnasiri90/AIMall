@@ -25,6 +25,22 @@ import {
   Check,
   X,
   Lock,
+  Sparkles,
+  CreditCard,
+  LifeBuoy,
+  LayoutDashboard,
+  Settings,
+  Code2,
+  ListTodo,
+  Shirt,
+  Home,
+  Wallet,
+  CalendarCheck,
+  Camera,
+  GraduationCap,
+  Dumbbell,
+  MapPin,
+  FileOutput,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -97,11 +113,46 @@ function MiniBarChart({ data }: { data: { date: string; total: number }[] }) {
   );
 }
 
+import { INTENT_TARGETS, matchIntent, ALL_INTENT_HREFS, type IntentTarget } from '@/lib/intent-targets';
+
+const INTENT_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  '/dashboard': LayoutDashboard,
+  '/settings': Settings,
+  '/chat': MessageSquare,
+  '/text-studio': FileText,
+  '/image-studio': ImageIcon,
+  '/audio-studio': Mic,
+  '/agents': Bot,
+  '/agents/student-tutor': GraduationCap,
+  '/agents/fitness-diet': Dumbbell,
+  '/agents/travel-tourism': MapPin,
+  '/agents/fashion': Shirt,
+  '/agents/home': Home,
+  '/agents/finance': Wallet,
+  '/agents/lifestyle': CalendarCheck,
+  '/agents/instagram-admin': Camera,
+  '/agents/persian-pdf-maker': FileOutput,
+  '/billing': CreditCard,
+  '/support': LifeBuoy,
+  '/knowledge': BookOpen,
+  '/workflows': GitBranch,
+  '/organizations': Building2,
+  '/developer': Code2,
+  '/jobs': ListTodo,
+  '/admin': Shield,
+};
+function getIntentIcon(href: string) {
+  return INTENT_ICON_MAP[href] ?? Sparkles;
+}
+
 export default function DashboardHomePage() {
   const router = useRouter();
   const { user, currentOrganizationId } = useAuthStore();
   const [range, setRange] = useState<'week' | 'month'>('month');
   const [quickSearch, setQuickSearch] = useState('');
+  const [intentInput, setIntentInput] = useState('');
+  const [intentResult, setIntentResult] = useState<IntentTarget | null>(null);
+  const [intentLoading, setIntentLoading] = useState(false);
 
   const queryClient = useQueryClient();
   const { from, to, label } = useMemo(() => getRangeDates(range), [range]);
@@ -174,21 +225,41 @@ export default function DashboardHomePage() {
     { label: 'نقش', value: overview?.role === 'ADMIN' ? 'مدیر' : 'کاربر', icon: Shield, color: 'text-green-500' },
   ];
 
-  const quickActions = [
-    { label: 'شروع گفتگو', href: '/chat', icon: MessageSquare, desc: 'چت با هوش مصنوعی' },
-    { label: 'تولید متن', href: '/text-studio', icon: FileText, desc: 'نوشتن حرفه‌ای' },
-    { label: 'تولید تصویر', href: '/image-studio', icon: ImageIcon, desc: 'خلق تصاویر' },
-    { label: 'پردازش صوت', href: '/audio-studio', icon: Mic, desc: 'تبدیل متن و صدا' },
-    { label: 'دستیارها', href: '/agents', icon: Bot, desc: 'دستیارهای تخصصی' },
-    { label: 'پایگاه دانش', href: '/knowledge', icon: BookOpen, desc: 'RAG و جستجو' },
-    { label: 'ورک‌فلوها', href: '/workflows', icon: GitBranch, desc: 'اتوماسیون' },
-  ].filter(
-    (a) =>
-      (a.href !== '/knowledge' && a.href !== '/workflows' && a.href !== '/agents') ||
-      (a.href === '/knowledge' && (menuFlags?.knowledge ?? false)) ||
-      (a.href === '/workflows' && (menuFlags?.workflows ?? false)) ||
-      (a.href === '/agents' && (!currentOrganizationId || profileContext?.canUseAgents !== false)),
-  );
+  const quickActions = useMemo(() => {
+    const mainHrefs = ['/chat', '/text-studio', '/image-studio', '/audio-studio', '/agents', '/knowledge', '/workflows'];
+    return INTENT_TARGETS.filter(
+      (a) =>
+        mainHrefs.includes(a.href) &&
+        ((a.href !== '/knowledge' && a.href !== '/workflows' && a.href !== '/agents') ||
+          (a.href === '/knowledge' && (menuFlags?.knowledge ?? false)) ||
+          (a.href === '/workflows' && (menuFlags?.workflows ?? false)) ||
+          (a.href === '/agents' && (!currentOrganizationId || profileContext?.canUseAgents !== false))),
+    ).map((a) => ({ label: a.label, href: a.href, icon: getIntentIcon(a.href), desc: a.desc }));
+  }, [menuFlags?.knowledge, menuFlags?.workflows, currentOrganizationId, profileContext?.canUseAgents]);
+
+  const allowedIntentHrefs = ALL_INTENT_HREFS;
+
+  const handleIntentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = intentInput.trim();
+    if (!q) return;
+    setIntentResult(null);
+    setIntentLoading(true);
+    try {
+      const aiResult = await api.classifyIntent(q);
+      if (aiResult && aiResult.href) {
+        setIntentResult({ href: aiResult.href, label: aiResult.label, desc: aiResult.desc, keywords: [] });
+        setIntentLoading(false);
+        return;
+      }
+    } catch {
+      // خطای شبکه یا سرور؛ با کلیدواژه امتحان می‌کنیم
+    }
+    const matched = matchIntent(q, allowedIntentHrefs);
+    setIntentResult(matched);
+    if (!matched) toast.info('نتیجه‌ای پیدا نشد؛ می‌توانید از دسترسی سریع استفاده کنید.');
+    setIntentLoading(false);
+  };
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -214,6 +285,63 @@ export default function DashboardHomePage() {
           </Button>
         </form>
       </div>
+
+      {/* میخوای چه کار کنی؟ — سرچ باکس و پیشنهاد بخش */}
+      <Card className="border-primary/20 bg-gradient-to-b from-primary/5 to-transparent">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="rounded-xl bg-primary/10 p-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <h2 className="text-lg sm:text-xl font-semibold">میخوای چه کار کنی؟</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            نیاز یا کاری که می‌خوای انجام بدی رو بنویس؛ بخش مناسب بهت پیشنهاد می‌شه.
+          </p>
+          <form onSubmit={handleIntentSubmit} className="flex flex-col sm:flex-row gap-2">
+            <Input
+              type="text"
+              placeholder="مثال: میخوام یه تصویر بسازم، سوالی از هوش مصنوعی بپرسم..."
+              value={intentInput}
+              onChange={(e) => { setIntentInput(e.target.value); setIntentResult(null); }}
+              className="flex-1 min-h-[48px]"
+              aria-label="بنویس میخوای چه کار کنی"
+            />
+            <Button type="submit" className="min-h-[48px] shrink-0" disabled={!intentInput.trim() || intentLoading}>
+              {intentLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 ms-1 animate-spin" />
+                  در حال تحلیل...
+                </>
+              ) : (
+                'تحلیل کن'
+              )}
+            </Button>
+          </form>
+          {intentResult && (
+            <div
+              className="mt-4 rounded-xl border border-primary/30 bg-background/80 p-4 flex flex-col sm:flex-row sm:items-center gap-4"
+              role="status"
+              aria-live="polite"
+            >
+              <div className="rounded-xl bg-primary/10 p-3 shrink-0">
+                {(() => { const Icon = getIntentIcon(intentResult.href); return <Icon className="h-8 w-8 text-primary" />; })()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm text-muted-foreground mb-0.5">به نظر می‌رسه می‌خوای:</p>
+                <p className="font-semibold text-base">{intentResult.label}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">{intentResult.desc}</p>
+              </div>
+              <Button asChild className="shrink-0 min-h-[44px]" size="sm">
+                <Link href={intentResult.href}>
+                  <ArrowLeft className="h-4 w-4 ms-1" />
+                  ورود به بخش
+                </Link>
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {coins < LOW_BALANCE_THRESHOLD && (
         <Card className="border-amber-500/50 bg-amber-500/5">

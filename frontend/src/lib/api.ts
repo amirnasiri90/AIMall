@@ -21,6 +21,17 @@ function getToken() {
   return null;
 }
 
+/** در صورت ۴۰۱ فراخوانی می‌شود؛ اپ (مثلاً layout) باید logout و redirect به لاگین را اینجا انجام دهد */
+let onUnauthorized: (() => void) | null = null;
+export function setOnUnauthorized(cb: (() => void) | null) {
+  onUnauthorized = cb;
+}
+
+function clearTokenAndNotify() {
+  if (typeof window !== 'undefined') localStorage.removeItem('token');
+  onUnauthorized?.();
+}
+
 async function request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const fullUrl = `${getApiBaseUrl()}${endpoint}`;
   const token = getToken();
@@ -32,6 +43,10 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
 
   const res = await fetch(fullUrl, { ...options, headers });
 
+  if (res.status === 401) {
+    clearTokenAndNotify();
+    throw new Error('نشست منقضی شده. لطفاً دوباره وارد شوید.');
+  }
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'خطای سرور' }));
     const message =
@@ -50,6 +65,10 @@ async function requestFormData<T = any>(endpoint: string, formData: FormData, me
 
   const res = await fetch(fullUrl, { method, body: formData, headers });
 
+  if (res.status === 401) {
+    clearTokenAndNotify();
+    throw new Error('نشست منقضی شده. لطفاً دوباره وارد شوید.');
+  }
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'خطای سرور' }));
     const message =
@@ -155,6 +174,10 @@ export const api = {
       },
       body: JSON.stringify(body),
     });
+    if (res.status === 401) {
+      clearTokenAndNotify();
+      throw new Error('نشست منقضی شده. لطفاً دوباره وارد شوید.');
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: 'خطای سرور' }));
       throw new Error(err.message || 'خطا در ارسال');
@@ -200,6 +223,10 @@ export const api = {
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify(body),
     });
+    if (res.status === 401) {
+      clearTokenAndNotify();
+      throw new Error('نشست منقضی شده. لطفاً دوباره وارد شوید.');
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: 'خطای سرور' }));
       throw new Error(err.message || 'خطا');
@@ -271,6 +298,10 @@ export const api = {
       headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
       body: formData,
     });
+    if (res.status === 401) {
+      clearTokenAndNotify();
+      throw new Error('نشست منقضی شده. لطفاً دوباره وارد شوید.');
+    }
     if (!res.ok) {
       const error = await res.json().catch(() => ({ message: 'خطای سرور' }));
       throw new Error(error.message || 'خطای سرور');
@@ -287,6 +318,10 @@ export const api = {
       headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
       body: formData,
     });
+    if (res.status === 401) {
+      clearTokenAndNotify();
+      throw new Error('نشست منقضی شده. لطفاً دوباره وارد شوید.');
+    }
     if (!res.ok) {
       const error = await res.json().catch(() => ({ message: 'خطای سرور' }));
       throw new Error(error.message || 'خطای سرور');
@@ -305,6 +340,10 @@ export const api = {
   },
   getMenuFlags: (): Promise<{ knowledge: boolean; workflows: boolean; jobs: boolean; developer: boolean }> =>
     request('/dashboard/menu-flags'),
+
+  /** تحلیل خواستهٔ محاوره‌ای کاربر با AI و پیشنهاد بخش پنل. در صورت خطا null برمی‌گرداند. */
+  classifyIntent: (text: string): Promise<{ href: string; label: string; desc: string } | null> =>
+    request('/dashboard/intent/classify', { method: 'POST', body: JSON.stringify({ text: text?.trim() || '' }) }),
 
   // ── Support (تیکت پشتیبانی) ──
   createTicket: (subject: string, body: string, category?: 'CONSULTING_SALES' | 'TECHNICAL', attachment?: File) => {
@@ -341,6 +380,10 @@ export const api = {
     const url = api.supportAttachmentUrl(ticketId, attachmentUrl);
     const token = getToken();
     const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (res.status === 401) {
+      clearTokenAndNotify();
+      throw new Error('نشست منقضی شده. لطفاً دوباره وارد شوید.');
+    }
     if (!res.ok) throw new Error('بارگذاری تصویر ناموفق');
     const blob = await res.blob();
     return URL.createObjectURL(blob);
@@ -501,6 +544,10 @@ export const api = {
     const url = api.adminTicketAttachmentUrl(ticketId, attachmentUrl);
     const token = getToken();
     const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (res.status === 401) {
+      clearTokenAndNotify();
+      throw new Error('نشست منقضی شده. لطفاً دوباره وارد شوید.');
+    }
     if (!res.ok) throw new Error('بارگذاری تصویر ناموفق');
     const blob = await res.blob();
     return URL.createObjectURL(blob);
@@ -526,6 +573,10 @@ export const api = {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: form,
     });
+    if (res.status === 401) {
+      clearTokenAndNotify();
+      throw new Error('نشست منقضی شده. لطفاً دوباره وارد شوید.');
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: 'خطای سرور' }));
       throw new Error(Array.isArray(err.message) ? err.message[0] : err.message || 'خطا');
