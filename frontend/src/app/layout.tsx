@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import { Vazirmatn } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/providers/theme-provider';
@@ -39,11 +40,22 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const headersList = await headers();
+  const host = headersList.get('x-forwarded-host') ?? headersList.get('host') ?? '';
+  const proto = headersList.get('x-forwarded-proto') ?? 'https';
+  const origin = host ? `${proto}://${host}` : '';
+
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
+        {origin ? (
+          <>
+            <link rel="preconnect" href={origin} />
+            <link rel="dns-prefetch" href={origin} />
+          </>
+        ) : null}
       </head>
       <body className={vazirmatn.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
