@@ -388,9 +388,9 @@ export function AgentChatPage({ config }: { config: AgentChatConfig }) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__new__">گفتگوی جدید</SelectItem>
-                    {agentConversations.map((c) => (
+                    {agentConversations.map((c: { id: string; title?: string | null }) => (
                       <SelectItem key={c.id} value={c.id}>
-                        <span className="truncate block max-w-[12rem]" title={c.title}>{c.title || 'بدون عنوان'}</span>
+                        <span className="truncate block max-w-[12rem]" title={c.title ?? undefined}>{c.title || 'بدون عنوان'}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
