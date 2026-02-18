@@ -12,7 +12,7 @@ export async function GET() {
       process.env.NEXT_PUBLIC_API_URL ||
       `http://127.0.0.1:${process.env.NEXT_PUBLIC_BACKEND_PORT || '3001'}`;
     const apiBase = base.replace(/\/$/, '') + '/api/v1';
-    const res = await fetch(`${apiBase}/branding`, { cache: 'no-store' });
+    const res = await fetch(`${apiBase}/branding`, { next: { revalidate: 60 } });
     const data = await res.json();
     const faviconUrl = data?.favicon ?? null;
     if (!faviconUrl) {
@@ -23,7 +23,7 @@ export async function GET() {
         },
       });
     }
-    const imgRes = await fetch(faviconUrl, { cache: 'no-store' });
+    const imgRes = await fetch(faviconUrl, { next: { revalidate: 300 } });
     if (!imgRes.ok) {
       return new NextResponse(DEFAULT_SVG, {
         headers: {

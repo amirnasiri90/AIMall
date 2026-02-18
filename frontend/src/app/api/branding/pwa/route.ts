@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       process.env.NEXT_PUBLIC_API_URL ||
       `http://127.0.0.1:${process.env.NEXT_PUBLIC_BACKEND_PORT || '3001'}`;
     const apiBase = base.replace(/\/$/, '') + '/api/v1';
-    const res = await fetch(`${apiBase}/branding`, { cache: 'no-store' });
+    const res = await fetch(`${apiBase}/branding`, { next: { revalidate: 60 } });
     const data = await res.json();
     const url = size === 512 ? data?.pwa512 : data?.pwa192;
     if (!url) {
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-    const imgRes = await fetch(url, { cache: 'no-store' });
+    const imgRes = await fetch(url, { next: { revalidate: 300 } });
     if (!imgRes.ok) {
       return new NextResponse(DEFAULT_SVG, {
         headers: {

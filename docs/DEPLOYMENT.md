@@ -226,6 +226,63 @@ chmod +x scripts/check-server.sh
    - برو **Caching** → **Configuration** → **Purge Everything** (پاک کردن کل کش).
    بعد در مرورگر یک بار Hard Refresh بزن.
 
+### سایت سنگین باز می‌شود یا خطای ۵۰۴ (Gateway Timeout)
+
+۵۰۴ یعنی Nginx (یا پروکسی) قبل از رسیدن پاسخ از فرانت یا بک‌اند، منتظر ماند و قطع کرد. علت‌های رایج و راه‌حل:
+
+۱. **تایم‌اوت Nginx کم است**  
+   داخل بلوک `server` یا `location` مربوط به پنل (مثلاً `location /`) و `location /api/v1` این خطوط را اضافه کن و بعد `sudo nginx -t` و `sudo systemctl reload nginx` بزن:
+
+   ```nginx
+   proxy_connect_timeout 30s;
+   proxy_send_timeout 120s;
+   proxy_read_timeout 120s;
+   ```
+
+   مثال کامل برای یک سرور (فرانت روی ۳۰۰۰، API روی ۳۰۰۱):
+
+   ```nginx
+   location / {
+       proxy_pass http://127.0.0.1:3000;
+       proxy_http_version 1.1;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection 'upgrade';
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto https;
+       proxy_cache_bypass $http_upgrade;
+       proxy_connect_timeout 30s;
+       proxy_send_timeout 120s;
+       proxy_read_timeout 120s;
+   }
+   location /api/v1 {
+       proxy_pass http://127.0.0.1:3001;
+       proxy_http_version 1.1;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto https;
+       proxy_connect_timeout 30s;
+       proxy_send_timeout 120s;
+       proxy_read_timeout 120s;
+   }
+   ```
+
+۲. **رم یا CPU سرور کم است**  
+   با `htop` یا `free -h` وضعیت رم و بار CPU را ببین. اگر Node (فرانت/بک‌اند) مدام ری‌استارت می‌شود یا سوئپ زیاد است، یا سخت‌افزار را ارتقا بده یا تعداد instanceهای PM2 را فقط در صورت نیاز افزایش بده (یک instance برای هر سرویس اغلب کافی است).
+
+۳. **دیتابیس کند است**  
+   اگر بک‌اند برای هر درخواست کوئری سنگین می‌زند، پاسخ‌ها دیر می‌رسند و Nginx ۵۰۴ می‌دهد. لاگ بک‌اند را ببین:  
+   `pm2 logs aimall-backend --lines 200`  
+   اگر خطای دیتابیس یا تأخیر زیاد دیدی، کوئری‌ها یا ایندکس‌های دیتابیس را بهینه کن.
+
+۴. **در کد**  
+   در این پروژه برای سبک‌تر شدن سرور این کارها انجام شده است:
+   - حذف `force-dynamic` از layout تا Next.js بتواند جایی که ممکن است کش کند.
+   - کش کوتاه (revalidate) برای درخواست‌های برندینگ (فاویکون و آیکون‌ها) تا هر بار به بک‌اند ضربه نزند.
+   بعد از هر تغییر کد حتماً یک بار فرانت را دوباره build و PM2 را ری‌استارت کن.
+
 ۶. **PM2 از مسیر اشتباه اجرا شده:** اسکریپت آپدیت الان قبل از ری‌استارت، PM2 را با `ecosystem.config.cjs` (مسیر مطلق) دوباره استارت می‌کند تا حتماً از همان پوشهٔ آپدیت‌شده سِرو شود. اگر قبلاً با روش دیگری (مثلاً فقط `pm2 restart`) آپدیت می‌کردی، از این به بعد با همان `./scripts/update.sh` آپدیت کن.
 
 ---

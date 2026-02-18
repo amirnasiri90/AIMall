@@ -19,10 +19,8 @@ export const viewport: Viewport = {
   ],
 };
 
-export const dynamic = 'force-dynamic';
-
 /**
- * فاویکون و آیکون اپل همیشه از مسیر همان‌دامنه (پروکسی) لود می‌شوند تا کش و آدرس درست اعمال شود.
+ * فاویکون و آیکون اپل از مسیر همان‌دامنه (پروکسی) لود می‌شوند؛ force-dynamic حذف شده تا بار سرور کم شود و ۵۰۴ کمتر رخ دهد.
  * خودِ routeها از بک‌اند می‌گیرند یا آیکون پیش‌فرض برمی‌گردانند.
  */
 export async function generateMetadata(): Promise<Metadata> {
