@@ -31,6 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(true);
+  const [showRetry, setShowRetry] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const logoUrl = useLogoUrl();
 
@@ -39,16 +40,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login');
   };
 
+  const goToLogin = () => {
+    logout();
+    router.replace('/login');
+  };
+
   useEffect(() => {
     if (!_hydrated) return;
     if (!token) {
       router.replace('/login');
       return;
     }
-    const timeoutMs = 15000;
+    setLoading(true);
+    setShowRetry(false);
+    const timeoutMs = 8000;
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('timeout')), timeoutMs)
     );
+    const showRetryTimer = setTimeout(() => setShowRetry(true), 4000);
     Promise.race([api.getMe(), timeoutPromise])
       .then((userData) => {
         setUser(userData);
@@ -57,18 +66,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .catch(() => {
         logout();
         router.replace('/login');
-      });
+      })
+      .finally(() => clearTimeout(showRetryTimer));
+    return () => clearTimeout(showRetryTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [_hydrated, token, router, setUser, logout]);
 
   if (!_hydrated || (token && loading)) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
+      <div className="flex h-screen flex-col items-center justify-center gap-6 bg-background p-4">
         <div className="space-y-4 w-64">
           <Skeleton className="h-8 w-full rounded-xl" />
           <Skeleton className="h-4 w-3/4 rounded-lg" />
           <Skeleton className="h-4 w-1/2 rounded-lg" />
         </div>
+        {showRetry && (
+          <div className="text-center space-y-3">
+            <p className="text-sm text-muted-foreground">اتصال به سرور طول کشید.</p>
+            <Button variant="outline" onClick={goToLogin}>
+              ورود مجدد
+            </Button>
+          </div>
+        )}
       </div>
     );
   }
