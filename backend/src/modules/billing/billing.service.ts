@@ -109,7 +109,7 @@ export class BillingService {
         if (dc.validTo && now > dc.validTo) throw new BadRequestException('کد تخفیف منقضی شده');
         if (dc.maxUses != null && dc.usedCount >= dc.maxUses) throw new BadRequestException('ظرفیت استفاده از این کد تمام شده');
         if (dc.minOrderIRR != null && priceAfterPackageDiscount < dc.minOrderIRR)
-          throw new BadRequestException(`حداقل مبلغ سفارش برای این کد ${dc.minOrderIRR} تومان است`);
+          throw new BadRequestException(`حداقل مبلغ سفارش برای این کد ${dc.minOrderIRR} ریال است`);
         if (dc.type === 'PERCENT') {
           discountAmountFromCode = Math.round((priceAfterPackageDiscount * dc.value) / 100);
         } else {

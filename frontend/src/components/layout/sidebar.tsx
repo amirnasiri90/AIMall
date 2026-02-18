@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { LayoutDashboard, MessageSquare, FileText, ImageIcon, Mic, CreditCard, Shield, Sparkles, Coins, Bot, Building2, BookOpen, GitBranch, ListTodo, Code2, ChevronDown, LifeBuoy, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLogoUrl } from '@/lib/use-branding';
 import { useAuthStore } from '@/lib/store';
 import { api } from '@/lib/api';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,6 +29,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const logoUrl = useLogoUrl();
   const { user, currentOrganizationId, setCurrentOrganizationId } = useAuthStore();
   const { data: orgs } = useQuery({
     queryKey: ['organizations'],
@@ -69,7 +71,7 @@ export function Sidebar() {
     <aside className="fixed top-0 right-0 z-30 hidden h-full w-64 glass-heavy md:flex md:flex-col border-l border-[hsl(var(--glass-border))]">
       <div className="flex h-16 items-center gap-2 border-b border-[hsl(var(--glass-border-subtle))] px-6">
         <div className="relative h-8 w-8 flex-shrink-0">
-          <Image src="/logo.png" alt="AiFO" fill className="object-contain" sizes="32px" />
+          <Image src={logoUrl} alt="AiFO" fill className="object-contain" sizes="32px" unoptimized={logoUrl.startsWith('http') || logoUrl.startsWith('data:')} />
         </div>
         <span className="text-lg font-bold">AiFO</span>
       </div>

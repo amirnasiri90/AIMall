@@ -1,6 +1,9 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, Res, Req, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, Res, Req, BadRequestException, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { Request } from 'express';
 import { ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { existsSync, mkdirSync, writeFileSync, createReadStream } from 'fs';
+import { join } from 'path';
 import { Response } from 'express';
 import { AdminService } from './admin.service';
 import { SupportService } from '../support/support.service';
@@ -230,6 +233,18 @@ export class AdminController {
     return this.supportService.findOneForAdmin(id);
   }
 
+  @Get('tickets/:id/attachments/:filename')
+  serveTicketAttachment(
+    @Param('id') id: string,
+    @Param('filename') filename: string,
+    @Res() res: Response,
+  ) {
+    const path = join(process.cwd(), 'uploads', 'support', id, filename.replace(/\.\./g, '').replace(/[\/\\]/g, ''));
+    if (!existsSync(path)) return res.status(404).json({ message: 'فایل یافت نشد' });
+    res.setHeader('Content-Type', 'application/octet-stream');
+    createReadStream(path).pipe(res);
+  }
+
   @Patch('tickets/:id')
   async updateTicket(
     @Param('id') id: string,
@@ -241,13 +256,27 @@ export class AdminController {
   }
 
   @Post('tickets/:id/messages')
-  replyToTicket(
+  @UseInterceptors(FileInterceptor('attachment', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  async replyToTicket(
     @Param('id') id: string,
     @CurrentUser() admin: any,
     @Body('content') content: string,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
     if (!content?.trim()) throw new BadRequestException('متن پیام الزامی است');
-    return this.supportService.addMessage(id, admin.id, content.trim(), true);
+    if (file?.buffer?.length) {
+      if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.mimetype)) throw new BadRequestException('فقط PNG و JPG مجاز است');
+    }
+    const msg = await this.supportService.addMessage(id, admin.id, content.trim(), true);
+    if (file?.buffer?.length) {
+      const ext = file.mimetype === 'image/png' ? 'png' : 'jpg';
+      const dir = join(process.cwd(), 'uploads', 'support', id);
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      const filename = `${msg.id}.${ext}`;
+      writeFileSync(join(dir, filename), file.buffer);
+      await this.supportService.setMessageAttachment(id, msg.id, `${id}/${filename}`);
+    }
+    return this.supportService.findOneForAdmin(id);
   }
 
   // ── System Settings ──
@@ -401,6 +430,38 @@ export class AdminController {
   @Post('reconcile-all')
   reconcileAll() {
     return this.adminService.reconcileAll();
+  }
+
+  // ── Branding (لوگوها) ──
+
+  private static readonly BRANDING_TYPES: Record<string, string> = {
+    favicon: 'favicon.ico', // پسوند بر اساس mime در handler تنظیم می‌شود
+    appleTouchIcon: 'apple-touch-icon.png',
+    pwa192: 'pwa-192.png',
+    pwa512: 'pwa-512.png',
+    logo: 'logo.png',
+  };
+
+  @Post('branding/upload')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }))
+  uploadBranding(
+    @Body('type') type: string,
+    @UploadedFile() file?: Express.Multer.File,
+    @CurrentUser() admin?: any,
+  ) {
+    if (!type || !AdminController.BRANDING_TYPES[type]) {
+      throw new BadRequestException('نوع لوگو معتبر نیست. مقادیر: favicon, appleTouchIcon, pwa192, pwa512, logo');
+    }
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('فایل تصویری ارسال نشده');
+    }
+    const dir = join(process.cwd(), 'uploads', 'site');
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    let filename = AdminController.BRANDING_TYPES[type];
+    if (type === 'favicon' && file.mimetype === 'image/png') filename = 'favicon.png';
+    const path = join(dir, filename);
+    writeFileSync(path, file.buffer);
+    return { ok: true, filename };
   }
 
   // ── Export ──

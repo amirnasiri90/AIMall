@@ -144,9 +144,14 @@ server {
 برای هر بار آپدیت کد (بدون از دست دادن داده):
 
 ```bash
-cd /path/to/AIMall
+cd ~/AIMall
+# یا اگر پروژه جای دیگری است: cd /root/AIMall یا cd /var/www/AIMall
+git pull origin main
+chmod +x scripts/update.sh
 ./scripts/update.sh
 ```
+
+*(مسیر را با مسیر واقعی پروژه روی سرور عوض کن. `~/AIMall` یعنی پوشهٔ AIMall داخل home کاربر.)*
 
 این اسکریپت معمولاً کارهای زیر را انجام می‌دهد:
 

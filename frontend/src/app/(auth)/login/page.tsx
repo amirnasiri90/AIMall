@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import { useLogoUrl } from '@/lib/use-branding';
 
 const FA = '۰۱۲۳۴۵۶۷۸۹';
 function normalizePhone(v: string): string {
@@ -27,6 +28,7 @@ function toPersianDigits(n: number): string {
 }
 
 export default function LoginPage() {
+  const logoUrl = useLogoUrl();
   const [mode, setMode] = useState<'password' | 'otp'>('password');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -174,7 +176,7 @@ export default function LoginPage() {
       <CardHeader className="text-center p-4 sm:p-6">
         <div className="flex justify-center mb-2">
           <div className="relative h-10 w-20 sm:h-12 sm:w-24">
-            <Image src="/logo.png" alt="AiFO" fill className="object-contain" sizes="96px" priority />
+            <Image src={logoUrl} alt="AiFO" fill className="object-contain" sizes="96px" priority unoptimized={logoUrl.startsWith('http') || logoUrl.startsWith('data:')} />
           </div>
         </div>
         <CardTitle className="text-xl sm:text-2xl">ورود به AiFO</CardTitle>
@@ -182,9 +184,9 @@ export default function LoginPage() {
       </CardHeader>
       <Tabs value={mode} onValueChange={(v) => { setMode(v as 'password' | 'otp'); setOtpSent(false); setOtpCode(''); setOtpExpiresAt(null); setOtpSecondsLeft(null); }}>
         <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
-          <TabsList className="grid w-full grid-cols-2 h-auto p-0.5">
-            <TabsTrigger value="password" className="text-xs sm:text-sm py-2.5 px-2">ورود با رمز</TabsTrigger>
-            <TabsTrigger value="otp" className="text-xs sm:text-sm py-2.5 px-2">ورود با کد OTP</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 h-auto p-0.5 min-h-[44px]">
+            <TabsTrigger value="password" className="text-xs sm:text-sm py-3 px-2 min-h-[44px]">ورود با رمز</TabsTrigger>
+            <TabsTrigger value="otp" className="text-xs sm:text-sm py-3 px-2 min-h-[44px]">ورود با کد OTP</TabsTrigger>
           </TabsList>
 
           {mode === 'password' && (
@@ -194,7 +196,7 @@ export default function LoginPage() {
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     dir="ltr"
-                    className="text-left"
+                    className="text-left min-h-[48px]"
                     placeholder="09123456789 یا you@example.com"
                     value={phone || email}
                     onChange={(e) => {
@@ -213,9 +215,9 @@ export default function LoginPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">رمز عبور</Label>
-                <Input id="password" type="password" placeholder="••••••" value={password} onChange={(e) => setPassword(e.target.value)} required dir="ltr" className="text-left" />
+                <Input id="password" type="password" placeholder="••••••" value={password} onChange={(e) => setPassword(e.target.value)} required dir="ltr" className="text-left min-h-[48px]" />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full min-h-[48px] text-base" disabled={loading}>
                 {loading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                 ورود
               </Button>
@@ -229,14 +231,14 @@ export default function LoginPage() {
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     dir="ltr"
-                    className="text-left flex-1 min-w-0"
+                    className="text-left flex-1 min-w-0 min-h-[48px]"
                     placeholder="09123456789"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
                     disabled={otpSent}
                   />
                   {!otpSent ? (
-                    <Button type="button" variant="outline" onClick={handleSendOtp} disabled={otpLoading} className="shrink-0">
+                    <Button type="button" variant="outline" onClick={handleSendOtp} disabled={otpLoading} className="shrink-0 min-h-[48px]">
                       {otpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'دریافت کد'}
                     </Button>
                   ) : null}
@@ -248,7 +250,7 @@ export default function LoginPage() {
                     <Label>کد ارسال‌شده</Label>
                     <Input
                       dir="ltr"
-                      className="text-left text-lg tracking-widest"
+                      className="text-left text-lg tracking-widest min-h-[48px]"
                       placeholder="۱۲۳۴۵"
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
@@ -280,15 +282,15 @@ export default function LoginPage() {
                       </div>
                     </div>
                   )}
-                  <Button type="submit" className="w-full" disabled={loading || (otpSecondsLeft !== null && otpSecondsLeft <= 0)}>
+                  <Button type="submit" className="w-full min-h-[48px] text-base" disabled={loading || (otpSecondsLeft !== null && otpSecondsLeft <= 0)}>
                     {loading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                     ورود با کد
                   </Button>
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" className="flex-1" onClick={handleResendOtp} disabled={otpLoading}>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button type="button" variant="outline" className="flex-1 min-h-[48px]" onClick={handleResendOtp} disabled={otpLoading}>
                       {otpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ارسال مجدد کد'}
                     </Button>
-                    <Button type="button" variant="ghost" className="flex-1" onClick={() => { setOtpSent(false); setOtpCode(''); setOtpExpiresAt(null); setOtpSecondsLeft(null); }} disabled={otpLoading}>
+                    <Button type="button" variant="ghost" className="flex-1 min-h-[48px]" onClick={() => { setOtpSent(false); setOtpCode(''); setOtpExpiresAt(null); setOtpSecondsLeft(null); }} disabled={otpLoading}>
                       تغییر شماره
                     </Button>
                   </div>

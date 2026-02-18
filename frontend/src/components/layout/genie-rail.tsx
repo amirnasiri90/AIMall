@@ -29,6 +29,7 @@ import {
   Moon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLogoUrl } from '@/lib/use-branding';
 import { useAuthStore } from '@/lib/store';
 import { api } from '@/lib/api';
 import {
@@ -58,6 +59,7 @@ const navItems = [
 export function GenieRail() {
   const pathname = usePathname();
   const router = useRouter();
+  const logoUrl = useLogoUrl();
   const { theme, setTheme } = useTheme();
   const { user, currentOrganizationId, logout } = useAuthStore();
   const { data: orgs } = useQuery({
@@ -99,7 +101,7 @@ export function GenieRail() {
       <div className="flex-shrink-0 flex flex-col gap-4">
         <Link href="/dashboard" className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-muted/50 transition-colors" title="AiFO">
           <div className="relative h-8 w-10 flex-shrink-0">
-            <Image src="/logo.png" alt="AiFO" fill className="object-contain object-right" sizes="40px" />
+            <Image src={logoUrl} alt="AiFO" fill className="object-contain object-right" sizes="40px" unoptimized={logoUrl.startsWith('http') || logoUrl.startsWith('data:')} />
           </div>
           <span className="text-base font-bold truncate">AiFO</span>
         </Link>

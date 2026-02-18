@@ -259,8 +259,9 @@ html, body {
     padding-right: env(safe-area-inset-right);
   }
 }
-.safe-area-inset-top { padding-top: env(safe-area-inset-top, 0); }
-.safe-area-inset-bottom { padding-bottom: env(safe-area-inset-bottom, 0); }
+.safe-area-inset-top { padding-top: max(0px, env(safe-area-inset-top)); }
+.safe-area-inset-bottom { padding-bottom: max(0px, env(safe-area-inset-bottom)); }
+.pb-safe { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
 
 /* Minimum touch target for key actions on touch devices */
 @media (pointer: coarse) {
@@ -268,6 +269,34 @@ html, body {
   .touch-target-min a {
     min-height: 44px;
     min-width: 44px;
+  }
+}
+
+/* ── موبایل و ریسپانسیو: UX بهتر ── */
+@media (max-width: 768px) {
+  /* لینک‌های دارای کلاس min-touch حداقل ۴۴px برای لمس راحت */
+  a[href].min-touch,
+  [role="button"].min-touch {
+    min-height: 44px;
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+  /* فاصلهٔ پایین محتوا برای نوار home و safe area */
+  .main-content-mobile {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* حذف هایلایت آبی لمس در موبایل برای ظاهر تمیزتر */
+@media (hover: none) and (pointer: coarse) {
+  button,
+  a,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+    tap-highlight-color: transparent;
   }
 }
 

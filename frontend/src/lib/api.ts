@@ -41,6 +41,24 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
   return res.json() as Promise<T>;
 }
 
+/** درخواست با FormData (بدون Content-Type تا مرورگر boundary بگذارد) */
+async function requestFormData<T = any>(endpoint: string, formData: FormData, method = 'POST'): Promise<T> {
+  const fullUrl = `${getApiBaseUrl()}${endpoint}`;
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(fullUrl, { method, body: formData, headers });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'خطای سرور' }));
+    const message =
+      Array.isArray(error.message) ? error.message[0] : (error.message || error.error || 'خطای سرور');
+    throw new Error(message);
+  }
+  return res.json() as Promise<T>;
+}
+
 export const api = {
   // ── Auth ──
   register: (data: { email?: string; phone?: string; password: string; name?: string }) =>
@@ -289,13 +307,44 @@ export const api = {
     request('/dashboard/menu-flags'),
 
   // ── Support (تیکت پشتیبانی) ──
-  createTicket: (subject: string, body: string, category?: 'CONSULTING_SALES' | 'TECHNICAL') =>
-    request('/support', { method: 'POST', body: JSON.stringify({ subject, body, category: category ?? 'CONSULTING_SALES' }) }),
+  createTicket: (subject: string, body: string, category?: 'CONSULTING_SALES' | 'TECHNICAL', attachment?: File) => {
+    if (attachment) {
+      const form = new FormData();
+      form.set('subject', subject);
+      form.set('body', body);
+      form.set('category', category ?? 'CONSULTING_SALES');
+      form.set('attachment', attachment);
+      return requestFormData<{ id: string }>('/support', form);
+    }
+    return request('/support', { method: 'POST', body: JSON.stringify({ subject, body, category: category ?? 'CONSULTING_SALES' }) });
+  },
   getMyTickets: (status?: string) =>
     request(`/support${status ? `?status=${encodeURIComponent(status)}` : ''}`),
   getTicket: (id: string) => request(`/support/${id}`),
-  addTicketMessage: (ticketId: string, content: string) =>
-    request(`/support/${ticketId}/messages`, { method: 'POST', body: JSON.stringify({ content }) }),
+  reopenTicket: (id: string) => request(`/support/${id}/reopen`, { method: 'POST' }),
+  addTicketMessage: (ticketId: string, content: string, attachment?: File) => {
+    if (attachment) {
+      const form = new FormData();
+      form.set('content', content);
+      form.set('attachment', attachment);
+      return requestFormData(`/support/${ticketId}/messages`, form);
+    }
+    return request(`/support/${ticketId}/messages`, { method: 'POST', body: JSON.stringify({ content }) });
+  },
+  /** آدرس مستقیم پیوست (برای fetch با توکن) */
+  supportAttachmentUrl: (ticketId: string, attachmentUrl: string) => {
+    const filename = attachmentUrl.includes('/') ? attachmentUrl.split('/')[1] : attachmentUrl;
+    return `${getApiBaseUrl()}/support/attachments/${ticketId}/${filename}`;
+  },
+  /** دریافت پیوست به‌صورت blob و برگرداندن object URL برای نمایش در img (باید بعداً revokeObjectURL فراخوانی شود) */
+  async getSupportAttachmentBlobUrl(ticketId: string, attachmentUrl: string): Promise<string> {
+    const url = api.supportAttachmentUrl(ticketId, attachmentUrl);
+    const token = getToken();
+    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) throw new Error('بارگذاری تصویر ناموفق');
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  },
 
   getTransactions: (page?: number, limit?: number, filters?: { category?: string; type?: string; from?: string; to?: string }) => {
     const params = new URLSearchParams();
@@ -435,14 +484,54 @@ export const api = {
   getAdminTicket: (id: string) => request(`/admin/tickets/${id}`),
   updateAdminTicket: (id: string, body: { status?: string; assignedToId?: string | null }) =>
     request(`/admin/tickets/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  replyAdminTicket: (id: string, content: string) =>
-    request(`/admin/tickets/${id}/messages`, { method: 'POST', body: JSON.stringify({ content }) }),
+  replyAdminTicket: (id: string, content: string, attachment?: File) => {
+    if (attachment) {
+      const form = new FormData();
+      form.set('content', content);
+      form.set('attachment', attachment);
+      return requestFormData(`/admin/tickets/${id}/messages`, form);
+    }
+    return request(`/admin/tickets/${id}/messages`, { method: 'POST', body: JSON.stringify({ content }) });
+  },
+  adminTicketAttachmentUrl: (ticketId: string, attachmentUrl: string) => {
+    const filename = attachmentUrl.includes('/') ? attachmentUrl.split('/')[1] : attachmentUrl;
+    return `${getApiBaseUrl()}/admin/tickets/${ticketId}/attachments/${filename}`;
+  },
+  async getAdminTicketAttachmentBlobUrl(ticketId: string, attachmentUrl: string): Promise<string> {
+    const url = api.adminTicketAttachmentUrl(ticketId, attachmentUrl);
+    const token = getToken();
+    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) throw new Error('بارگذاری تصویر ناموفق');
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  },
 
   // Admin - Settings
   getAdminSettings: (category?: string) =>
     request(`/admin/settings${category ? `?category=${category}` : ''}`),
   updateAdminSetting: (key: string, value: string) =>
     request(`/admin/settings/${key}`, { method: 'PATCH', body: JSON.stringify({ value }) }),
+
+  // Branding (عمومی — بدون توکن)
+  getBranding: (): Promise<{ favicon: string | null; appleTouchIcon: string | null; pwa192: string | null; pwa512: string | null; logo: string | null }> =>
+    fetch(`${getApiBaseUrl()}/branding`).then((r) => (r.ok ? r.json() : Promise.resolve({ favicon: null, appleTouchIcon: null, pwa192: null, pwa512: null, logo: null }))),
+  getBrandingUploadUrl: (filename: string) => `${getApiBaseUrl()}/uploads/site/${filename}`,
+  uploadBranding: async (type: string, file: File) => {
+    const form = new FormData();
+    form.append('type', type);
+    form.append('file', file);
+    const token = getToken();
+    const res = await fetch(`${getApiBaseUrl()}/admin/branding/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'خطای سرور' }));
+      throw new Error(Array.isArray(err.message) ? err.message[0] : err.message || 'خطا');
+    }
+    return res.json();
+  },
 
   // Admin - Audit Logs
   getAuditLogs: (options?: { userId?: string; action?: string; entity?: string; from?: string; to?: string; page?: number; limit?: number }) => {

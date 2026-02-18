@@ -19,18 +19,27 @@ export const viewport: Viewport = {
   ],
 };
 
-export const metadata: Metadata = {
-  title: 'AiFO - light your path',
-  description: 'همه‌فن‌حریف، زنده، بازیگوش اما دقیق. AiFO — کنجکاوی تو را روشن می‌کند.',
-  icons: {
-    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>",
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'AiFO',
-  },
-};
+export const dynamic = 'force-dynamic';
+
+/**
+ * فاویکون و آیکون اپل همیشه از مسیر همان‌دامنه (پروکسی) لود می‌شوند تا کش و آدرس درست اعمال شود.
+ * خودِ routeها از بک‌اند می‌گیرند یا آیکون پیش‌فرض برمی‌گردانند.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: 'AiFO - light your path',
+    description: 'همه‌فن‌حریف، زنده، بازیگوش اما دقیق. AiFO — کنجکاوی تو را روشن می‌کند.',
+    icons: {
+      icon: '/api/branding/icon',
+      apple: '/api/branding/apple',
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'default',
+      title: 'AiFO',
+    },
+  };
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -1,6 +1,9 @@
 import type { MetadataRoute } from 'next';
 
-export default function manifest(): MetadataRoute.Manifest {
+/**
+ * آیکون‌های PWA از مسیر همان‌دامنه (پروکسی) لود می‌شوند؛ خودِ route از بک‌اند یا پیش‌فرض برمی‌گرداند.
+ */
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
   return {
     name: 'AiFO - light your path',
     short_name: 'AiFO',
@@ -13,24 +16,9 @@ export default function manifest(): MetadataRoute.Manifest {
     dir: 'rtl',
     lang: 'fa',
     icons: [
-      {
-        src: '/logo.png',
-        sizes: '192x192',
-        type: 'image/png',
-        purpose: 'any',
-      },
-      {
-        src: '/logo.png',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'any',
-      },
-      {
-        src: '/logo.png',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'maskable',
-      },
+      { src: '/api/branding/pwa?size=192', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/api/branding/pwa?size=512', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/api/branding/pwa?size=512', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   };
 }

@@ -96,7 +96,7 @@ async function main() {
 
   // Seed System Settings
   const defaults: Array<{ key: string; value: string; description: string; category: string }> = [
-    { key: 'coin_price_irr', value: '1000', description: 'قیمت هر سکه (تومان)', category: 'pricing' },
+    { key: 'coin_price_irr', value: '1000', description: 'قیمت هر سکه (ریال)', category: 'pricing' },
     { key: 'coin_cost_chat', value: '2', description: 'هزینه سکه برای هر پیام چت', category: 'billing' },
     { key: 'coin_cost_text', value: '5', description: 'هزینه سکه برای تولید متن', category: 'billing' },
     { key: 'coin_cost_image', value: '10', description: 'هزینه سکه برای تولید تصویر', category: 'billing' },

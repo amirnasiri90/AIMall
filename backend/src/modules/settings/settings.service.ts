@@ -53,7 +53,7 @@ export class SettingsService {
   async setCoinPriceIRR(value: number): Promise<void> {
     await this.prisma.systemSetting.upsert({
       where: { key: KEYS.COIN_PRICE_IRR },
-      create: { key: KEYS.COIN_PRICE_IRR, value: String(value), category: 'pricing', description: 'قیمت هر سکه (تومان)' },
+      create: { key: KEYS.COIN_PRICE_IRR, value: String(value), category: 'pricing', description: 'قیمت هر سکه (ریال)' },
       update: { value: String(value) },
     });
   }

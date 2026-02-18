@@ -1,20 +1,28 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+const VALID_STATUSES = ['IN_PROGRESS', 'SUPPORT_REPLIED', 'CUSTOMER_REPLIED', 'CLOSED'] as const;
+
 @Injectable()
 export class SupportService {
   constructor(private prisma: PrismaService) {}
 
-  async create(userId: string, subject: string, body: string, category: string = 'CONSULTING_SALES') {
+  async create(
+    userId: string,
+    subject: string,
+    body: string,
+    category: string = 'CONSULTING_SALES',
+    attachmentUrl?: string | null,
+  ) {
     const validCategory = ['CONSULTING_SALES', 'TECHNICAL'].includes(category) ? category : 'CONSULTING_SALES';
     const ticket = await this.prisma.supportTicket.create({
       data: {
         userId,
         subject,
         category: validCategory,
-        status: 'OPEN',
+        status: 'IN_PROGRESS',
         messages: {
-          create: { authorId: userId, content: body, isStaff: false },
+          create: { authorId: userId, content: body, isStaff: false, attachmentUrl: attachmentUrl ?? undefined },
         },
       },
       include: {
@@ -27,7 +35,7 @@ export class SupportService {
 
   async findMyTickets(userId: string, status?: string) {
     const where: { userId: string; status?: string } = { userId };
-    if (status && ['OPEN', 'IN_PROGRESS', 'CLOSED'].includes(status)) where.status = status;
+    if (status && VALID_STATUSES.includes(status as any)) where.status = status;
     return this.prisma.supportTicket.findMany({
       where,
       orderBy: { updatedAt: 'desc' },
@@ -51,19 +59,44 @@ export class SupportService {
     return ticket;
   }
 
-  async addMessage(ticketId: string, userId: string, content: string, isStaff = false) {
+  async reopen(ticketId: string, userId: string) {
+    const ticket = await this.prisma.supportTicket.findUnique({ where: { id: ticketId } });
+    if (!ticket) throw new NotFoundException('تیکت یافت نشد');
+    if (ticket.userId !== userId) throw new ForbiddenException('شما مالک این تیکت نیستید');
+    if (ticket.status !== 'CLOSED') throw new ForbiddenException('فقط تیکت بسته شده را می‌توان بازگشایی کرد');
+    return this.prisma.supportTicket.update({
+      where: { id: ticketId },
+      data: { status: 'CUSTOMER_REPLIED', updatedAt: new Date() },
+    });
+  }
+
+  async addMessage(
+    ticketId: string,
+    userId: string,
+    content: string,
+    isStaff = false,
+    attachmentUrl?: string | null,
+  ) {
     const ticket = await this.prisma.supportTicket.findUnique({ where: { id: ticketId } });
     if (!ticket) throw new NotFoundException('تیکت یافت نشد');
     const ownerId = String(ticket.userId);
     const authorId = userId != null ? String(userId) : '';
     if (!isStaff && ownerId !== authorId) throw new ForbiddenException('شما مالک این تیکت نیستید یا نشست شما منقضی شده است');
+    if (!isStaff && ticket.status === 'CLOSED') throw new ForbiddenException('این تیکت بسته است. برای ادامه گفتگو آن را بازگشایی کنید.');
+    const newStatus = isStaff ? 'SUPPORT_REPLIED' : 'CUSTOMER_REPLIED';
     const msg = await this.prisma.ticketMessage.create({
-      data: { ticketId, authorId: userId, content, isStaff },
+      data: {
+        ticketId,
+        authorId: userId,
+        content,
+        isStaff,
+        attachmentUrl: attachmentUrl ?? undefined,
+      },
       include: { author: { select: { id: true, name: true } } },
     });
     await this.prisma.supportTicket.update({
       where: { id: ticketId },
-      data: { updatedAt: new Date() },
+      data: { status: newStatus, updatedAt: new Date() },
     });
     return msg;
   }
@@ -73,7 +106,7 @@ export class SupportService {
     const limit = Math.min(options?.limit ?? 20, 100);
     const skip = (page - 1) * limit;
     const where: { status?: string; category?: string } = {};
-    if (options?.status && ['OPEN', 'IN_PROGRESS', 'CLOSED'].includes(options.status)) where.status = options.status;
+    if (options?.status && VALID_STATUSES.includes(options.status as any)) where.status = options.status;
     if (options?.category && ['CONSULTING_SALES', 'TECHNICAL'].includes(options.category)) where.category = options.category;
     const [items, total] = await Promise.all([
       this.prisma.supportTicket.findMany({
@@ -104,7 +137,7 @@ export class SupportService {
   }
 
   async updateStatus(ticketId: string, status: string) {
-    if (!['OPEN', 'IN_PROGRESS', 'CLOSED'].includes(status)) throw new ForbiddenException('وضعیت نامعتبر');
+    if (!VALID_STATUSES.includes(status as any)) throw new ForbiddenException('وضعیت نامعتبر');
     return this.prisma.supportTicket.update({
       where: { id: ticketId },
       data: { status },
@@ -115,6 +148,17 @@ export class SupportService {
     return this.prisma.supportTicket.update({
       where: { id: ticketId },
       data: { assignedToId },
+    });
+  }
+
+  async setMessageAttachment(ticketId: string, messageId: string, attachmentUrl: string) {
+    const msg = await this.prisma.ticketMessage.findFirst({
+      where: { id: messageId, ticketId },
+    });
+    if (!msg) throw new NotFoundException('پیام یافت نشد');
+    return this.prisma.ticketMessage.update({
+      where: { id: messageId },
+      data: { attachmentUrl },
     });
   }
 }

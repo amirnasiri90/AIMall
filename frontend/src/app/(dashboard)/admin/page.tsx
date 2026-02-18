@@ -7,6 +7,7 @@ import {
   MessageSquare, FileText, ImageIcon, Mic, Download, Settings,
   Shield, RefreshCw, Eye, Database, Wrench, ChevronDown, FileSignature,
   DollarSign, Package, Tag, Pencil, Plus, Trash2, Cpu, Key, CheckCircle2, XCircle, HelpCircle,
+  Image as ImageIconLucide, Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -19,7 +20,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useAuthStore } from '@/lib/store';
 import { api } from '@/lib/api';
-import { formatDate, formatNumber } from '@/lib/utils';
+import { formatDate, formatNumber, cn } from '@/lib/utils';
+
+function AdminTicketAttachmentImg({ ticketId, attachmentUrl }: { ticketId: string; attachmentUrl: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    api.getAdminTicketAttachmentBlobUrl(ticketId, attachmentUrl).then((url) => {
+      objectUrl = url;
+      setSrc(url);
+    }).catch(() => setSrc(null));
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [ticketId, attachmentUrl]);
+  if (!src) return <div className="rounded-lg bg-muted flex items-center justify-center h-20 text-muted-foreground"><ImageIconLucide className="h-5 w-5" /></div>;
+  return <img src={src} alt="پیوست" className="rounded-lg max-h-40 object-contain border bg-muted mt-1" />;
+}
 
 const serviceIcons: Record<string, any> = {
   chat: MessageSquare, text: FileText, image: ImageIcon, audio: Mic,
@@ -276,6 +291,7 @@ export default function AdminPage() {
   const [ticketCategoryFilter, setTicketCategoryFilter] = useState<string>('');
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [ticketReply, setTicketReply] = useState('');
+  const [ticketReplyAttachment, setTicketReplyAttachment] = useState<File | null>(null);
   const [ticketReplySending, setTicketReplySending] = useState(false);
   const [ticketStatusUpdating, setTicketStatusUpdating] = useState(false);
 
@@ -329,6 +345,11 @@ export default function AdminPage() {
   });
   const { data: aiProvidersList } = useQuery({ queryKey: ['admin-ai-providers'], queryFn: api.getAiProviders, enabled: isAdmin });
   const { data: serviceMappingData } = useQuery({ queryKey: ['admin-service-mapping'], queryFn: api.getServiceMapping, enabled: isAdmin });
+  const { data: branding, refetch: refetchBranding } = useQuery({
+    queryKey: ['branding'],
+    queryFn: api.getBranding,
+  });
+  const [logoUploading, setLogoUploading] = useState<string | null>(null);
   const { data: editUserData } = useQuery({
     queryKey: ['admin-user', editUserDialog?.id],
     queryFn: () => api.getAdminUser(editUserDialog!.id),
@@ -737,10 +758,15 @@ export default function AdminPage() {
 
   const handleTicketReply = async () => {
     if (!selectedTicketId || !ticketReply.trim()) return;
+    if (ticketReplyAttachment && !['image/png', 'image/jpeg', 'image/jpg'].includes(ticketReplyAttachment.type)) {
+      toast.error('فقط PNG و JPG مجاز است');
+      return;
+    }
     setTicketReplySending(true);
     try {
-      await api.replyAdminTicket(selectedTicketId, ticketReply.trim());
+      await api.replyAdminTicket(selectedTicketId, ticketReply.trim(), ticketReplyAttachment ?? undefined);
       setTicketReply('');
+      setTicketReplyAttachment(null);
       queryClient.invalidateQueries({ queryKey: ['admin-ticket', selectedTicketId] });
       queryClient.invalidateQueries({ queryKey: ['admin-tickets'] });
       toast.success('پاسخ ارسال شد');
@@ -913,6 +939,7 @@ export default function AdminPage() {
           <TabsTrigger value="discount-codes">کد تخفیف</TabsTrigger>
           <TabsTrigger value="ai-services">سرویس‌های هوش مصنوعی</TabsTrigger>
           <TabsTrigger value="settings">تنظیمات سیستم</TabsTrigger>
+          <TabsTrigger value="logos">لوگوها</TabsTrigger>
           <TabsTrigger value="tickets">تیکت‌های پشتیبانی</TabsTrigger>
           <TabsTrigger value="sla">وضعیت SLA</TabsTrigger>
           <TabsTrigger value="audit">لاگ تغییرات</TabsTrigger>
@@ -985,7 +1012,7 @@ export default function AdminPage() {
         <TabsContent value="pricing" className="mt-4 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">قیمت هر سکه (تومان)</CardTitle>
+              <CardTitle className="text-base">قیمت هر سکه (ریال)</CardTitle>
               <CardDescription>مبلغ به ازای هر سکه برای محاسبات</CardDescription>
             </CardHeader>
             <CardContent className="flex items-end gap-4">
@@ -1081,7 +1108,7 @@ export default function AdminPage() {
                     <th className="p-3 text-right font-medium">نام</th>
                     <th className="p-3 text-right font-medium">نوع پلن</th>
                     <th className="p-3 text-right font-medium">سکه</th>
-                    <th className="p-3 text-right font-medium">قیمت (تومان)</th>
+                    <th className="p-3 text-right font-medium">قیمت (ریال)</th>
                     <th className="p-3 text-right font-medium">تخفیف %</th>
                     <th className="p-3 text-right font-medium">فعال</th>
                     <th className="p-3 text-right font-medium">عملیات</th>
@@ -1349,6 +1376,79 @@ export default function AdminPage() {
           ))}
         </TabsContent>
 
+        {/* Logos Tab — لوگوها و نمادک برای سایت و PWA */}
+        <TabsContent value="logos" className="mt-4 space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <ImageIconLucide className="h-5 w-5" />
+                لوگوها و نمادک سایت
+              </CardTitle>
+              <CardDescription>برای هر بخش تصویر را با اندازهٔ پیشنهادی آپلود کنید. در تب مرورگر، نصب PWA و هدر سایت از همین تصاویر استفاده می‌شود.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {[
+                { key: 'favicon', label: 'نمادک سایت (فاویکون)', size: '32×32', desc: 'تب مرورگر', urlKey: 'favicon' as const },
+                { key: 'appleTouchIcon', label: 'آیکون اپل (اضافه به صفحهٔ اصلی)', size: '180×180', desc: 'iOS / افزودن به صفحهٔ اصلی', urlKey: 'appleTouchIcon' as const },
+                { key: 'pwa192', label: 'آیکون PWA کوچک', size: '192×192', desc: 'نمایش در نوار وظیفه و منو', urlKey: 'pwa192' as const },
+                { key: 'pwa512', label: 'آیکون PWA بزرگ', size: '512×512', desc: 'نصب اپلیکیشن و اسپلش', urlKey: 'pwa512' as const },
+                { key: 'logo', label: 'لوگو هدر و سایدبار', size: '64×64 یا 128×128', desc: 'نمایش در هدر، سایدبار و صفحهٔ ورود', urlKey: 'logo' as const },
+              ].map(({ key, label, size, desc, urlKey }) => (
+                <div key={key} className="flex flex-wrap items-center gap-4 p-4 rounded-xl border border-border bg-muted/20">
+                  <div className="flex flex-col items-center gap-2 min-w-[100px]">
+                    {branding?.[urlKey] ? (
+                      <img src={`${branding[urlKey]}?t=${Date.now()}`} alt={label} className="w-16 h-16 object-contain rounded-lg border border-border bg-background" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg border border-dashed border-border bg-muted flex items-center justify-center">
+                        <ImageIconLucide className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    )}
+                    <span className="text-xs text-muted-foreground text-center">{size}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{label}</p>
+                    <p className="text-xs text-muted-foreground">{desc}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      accept="image/png,image/x-icon,image/ico,.ico"
+                      className="hidden"
+                      id={`logo-${key}`}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setLogoUploading(key);
+                        try {
+                          await api.uploadBranding(key, file);
+                          await refetchBranding();
+                          toast.success(`${label} با موفقیت آپلود شد`);
+                        } catch (err: any) {
+                          toast.error(err?.message || 'خطا در آپلود');
+                        } finally {
+                          setLogoUploading(null);
+                          e.target.value = '';
+                        }
+                      }}
+                    />
+                    <Label htmlFor={`logo-${key}`} className="cursor-pointer">
+                      <span
+                        className={cn(
+                          'inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-3 border border-input bg-background hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50',
+                          logoUploading === key && 'opacity-70'
+                        )}
+                      >
+                        {logoUploading === key ? <Loader2 className="h-3.5 w-3.5 animate-spin me-1" /> : <Upload className="h-3.5 w-3.5 me-1" />}
+                        آپلود
+                      </span>
+                    </Label>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Support Tickets Tab — پاسخگویی به پیام‌های کاربران */}
         <TabsContent value="tickets" className="mt-4 space-y-4">
           <p className="text-muted-foreground text-sm">پیام‌هایی که کاربران ارسال کرده‌اند در اینجا نمایش داده می‌شوند. تیکتی انتخاب کنید و پاسخ دهید.</p>
@@ -1359,8 +1459,9 @@ export default function AdminPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه وضعیت‌ها</SelectItem>
-                <SelectItem value="OPEN">باز</SelectItem>
                 <SelectItem value="IN_PROGRESS">در حال بررسی</SelectItem>
+                <SelectItem value="SUPPORT_REPLIED">پاسخ پشتیبانی</SelectItem>
+                <SelectItem value="CUSTOMER_REPLIED">پاسخ مشتری</SelectItem>
                 <SelectItem value="CLOSED">بسته</SelectItem>
               </SelectContent>
             </Select>
@@ -1394,7 +1495,9 @@ export default function AdminPage() {
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-medium truncate text-sm">{t.subject}</span>
-                          <Badge variant={t.status === 'CLOSED' ? 'secondary' : 'default'} className="shrink-0">{t.status === 'OPEN' ? 'باز' : t.status === 'IN_PROGRESS' ? 'در حال بررسی' : 'بسته'}</Badge>
+                          <Badge variant={t.status === 'CLOSED' ? 'secondary' : 'default'} className="shrink-0">
+                            {t.status === 'IN_PROGRESS' ? 'در حال بررسی' : t.status === 'SUPPORT_REPLIED' ? 'پاسخ پشتیبانی' : t.status === 'CUSTOMER_REPLIED' ? 'پاسخ مشتری' : 'بسته'}
+                          </Badge>
                         </div>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs text-muted-foreground">{t.user?.email}</span>
@@ -1426,8 +1529,9 @@ export default function AdminPage() {
                       <SelectValue placeholder="وضعیت" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="OPEN">باز</SelectItem>
                       <SelectItem value="IN_PROGRESS">در حال بررسی</SelectItem>
+                      <SelectItem value="SUPPORT_REPLIED">پاسخ پشتیبانی</SelectItem>
+                      <SelectItem value="CUSTOMER_REPLIED">پاسخ مشتری</SelectItem>
                       <SelectItem value="CLOSED">بسته</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1438,24 +1542,29 @@ export default function AdminPage() {
                   <p className="text-muted-foreground text-sm">یک تیکت را انتخاب کنید</p>
                 ) : (
                   <>
-                    <div>
+                    <div className="pb-2 border-b">
                       <p className="text-sm font-medium">{selectedTicket.subject}</p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <span className="text-xs text-muted-foreground">{selectedTicket.user?.name} — {selectedTicket.user?.email}</span>
                         <Badge variant="outline" className="text-xs">{(selectedTicket as any).category === 'TECHNICAL' ? 'فنی' : 'مشاوره و فروش'}</Badge>
                       </div>
                     </div>
-                    <div className="space-y-2 max-h-[240px] overflow-y-auto">
+                    <div className="space-y-3 max-h-[280px] overflow-y-auto">
                       {(selectedTicket.messages as any[])?.map((msg: any) => (
-                        <div key={msg.id} className={`rounded-lg p-2 text-sm ${msg.isStaff ? 'bg-primary/10' : 'bg-muted/50'}`}>
-                          <span className="font-medium">{msg.isStaff ? 'پشتیبانی' : msg.author?.name}</span>
-                          <span className="text-muted-foreground text-xs me-2">{formatDate(msg.createdAt)}</span>
-                          <p className="mt-1 whitespace-pre-wrap">{msg.content}</p>
+                        <div key={msg.id} className={`rounded-xl p-3 text-sm ${msg.isStaff ? 'bg-primary/10 border border-primary/20' : 'bg-muted/50 border border-transparent'}`}>
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="font-medium">{msg.isStaff ? 'پشتیبانی' : msg.author?.name}</span>
+                            <span className="text-muted-foreground text-xs">{formatDate(msg.createdAt)}</span>
+                          </div>
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                          {msg.attachmentUrl && (
+                            <AdminTicketAttachmentImg ticketId={selectedTicket.id} attachmentUrl={msg.attachmentUrl} />
+                          )}
                         </div>
                       ))}
                     </div>
                     {selectedTicket.status !== 'CLOSED' && (
-                      <div className="space-y-2 pt-2 border-t">
+                      <div className="space-y-3 pt-3 border-t">
                         <textarea
                           placeholder="پاسخ پشتیبانی..."
                           value={ticketReply}
@@ -1463,6 +1572,16 @@ export default function AdminPage() {
                           rows={3}
                           className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
                         />
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">پیوست تصویر (اختیاری): PNG، JPG</p>
+                          <Input
+                            type="file"
+                            accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                            className="max-w-xs"
+                            onChange={(e) => setTicketReplyAttachment(e.target.files?.[0] ?? null)}
+                          />
+                          {ticketReplyAttachment && <span className="text-xs text-muted-foreground ms-2">{ticketReplyAttachment.name}</span>}
+                        </div>
                         <Button size="sm" onClick={handleTicketReply} disabled={ticketReplySending || !ticketReply.trim()}>
                           {ticketReplySending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                           <span className="ms-2">ارسال پاسخ</span>
@@ -1841,7 +1960,7 @@ export default function AdminPage() {
                 <Input type="number" min="1" dir="ltr" value={packageForm.coins} onChange={(e) => setPackageForm((f) => ({ ...f, coins: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label>قیمت (تومان)</Label>
+                <Label>قیمت (ریال)</Label>
                 <Input type="number" min="0" dir="ltr" value={packageForm.priceIRR} onChange={(e) => setPackageForm((f) => ({ ...f, priceIRR: e.target.value }))} />
               </div>
             </div>
@@ -1916,7 +2035,7 @@ export default function AdminPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>حداقل مبلغ سفارش (تومان)</Label>
+                <Label>حداقل مبلغ سفارش (ریال)</Label>
                 <Input type="number" min="0" dir="ltr" value={discountCodeForm.minOrderIRR} onChange={(e) => setDiscountCodeForm((f) => ({ ...f, minOrderIRR: e.target.value }))} placeholder="خالی = بدون حد" />
               </div>
               <div className="space-y-2">

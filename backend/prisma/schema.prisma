@@ -359,7 +359,7 @@ model SupportTicket {
   userId       String
   subject      String
   category     String         @default("CONSULTING_SALES") // CONSULTING_SALES | TECHNICAL
-  status       String         @default("OPEN")
+  status       String         @default("IN_PROGRESS")     // IN_PROGRESS | SUPPORT_REPLIED | CUSTOMER_REPLIED | CLOSED
   assignedToId String?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
@@ -368,12 +368,13 @@ model SupportTicket {
 }
 
 model TicketMessage {
-  id        String        @id @default(uuid())
-  ticketId  String
-  authorId  String
-  content   String
-  isStaff   Boolean       @default(false)
-  createdAt DateTime      @default(now())
-  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  id            String        @id @default(uuid())
+  ticketId      String
+  authorId      String
+  content       String
+  isStaff       Boolean       @default(false)
+  attachmentUrl String?       // مسیر فایل پیوست (PNG/JPG)
+  createdAt     DateTime      @default(now())
+  ticket        SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author        User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
 }

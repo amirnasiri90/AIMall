@@ -5,7 +5,7 @@ export class UpdateTicketDto {
   @Expose()
   @IsOptional()
   @IsString()
-  @IsIn(['OPEN', 'IN_PROGRESS', 'CLOSED'])
+  @IsIn(['IN_PROGRESS', 'SUPPORT_REPLIED', 'CUSTOMER_REPLIED', 'CLOSED'])
   status?: string;
 
   @Expose()

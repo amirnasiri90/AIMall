@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import { useLogoUrl } from '@/lib/use-branding';
 
 function normalizePhone(v: string): string {
   const fa = '۰۱۲۳۴۵۶۷۸۹';
@@ -24,6 +25,7 @@ function normalizePhone(v: string): string {
 }
 
 export default function RegisterPage() {
+  const logoUrl = useLogoUrl();
   const [mode, setMode] = useState<'phone' | 'email'>('phone');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -89,7 +91,7 @@ export default function RegisterPage() {
       <CardHeader className="text-center">
         <div className="flex justify-center mb-2">
           <div className="relative h-12 w-24">
-            <Image src="/logo.png" alt="AiFO" fill className="object-contain" sizes="96px" priority />
+            <Image src={logoUrl} alt="AiFO" fill className="object-contain" sizes="96px" priority unoptimized={logoUrl.startsWith('http') || logoUrl.startsWith('data:')} />
           </div>
         </div>
         <CardTitle className="text-2xl">ثبت‌نام در AiFO</CardTitle>

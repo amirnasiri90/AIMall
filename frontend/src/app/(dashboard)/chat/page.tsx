@@ -953,13 +953,13 @@ export default function ChatPage() {
 
                   {/* Compare streaming */}
                   {compareMode && (compareStreaming || compareStreamText) && (
-                    <div className="flex gap-2.5 flex-row">
+                    <div className="flex gap-2.5 flex-row-reverse text-right" dir="rtl">
                       <div className="h-7 w-7 rounded-full bg-purple-500/10 backdrop-blur-sm flex items-center justify-center flex-shrink-0 mt-1">
                         <GitCompareArrows className="h-3.5 w-3.5 text-purple-500" />
                       </div>
-                      <div className="max-w-[90%] sm:max-w-[75%] rounded-2xl px-3.5 py-2 text-sm glass-subtle border border-purple-500/20 leading-relaxed">
+                      <div className="max-w-[90%] sm:max-w-[75%] rounded-2xl px-3.5 py-2 text-sm glass-subtle border border-purple-500/20 leading-relaxed text-right">
                         <span className="block text-[10px] text-purple-500 font-medium mb-1">{compareModel.split('/').pop()}</span>
-                        <div className="prose-sm max-w-none">
+                        <div className="prose-sm prose-p:text-right prose-ul:text-right prose-ol:text-right max-w-none" dir="rtl">
                           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{compareStreamText}</ReactMarkdown>
                         </div>
                         {compareStreaming && <span className="inline-block w-1.5 h-4 bg-purple-500/60 rounded-sm animate-pulse align-middle ms-0.5" />}

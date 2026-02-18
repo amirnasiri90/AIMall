@@ -17,8 +17,9 @@ import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 
 const statusLabel: Record<string, string> = {
-  OPEN: 'باز',
   IN_PROGRESS: 'در حال بررسی',
+  SUPPORT_REPLIED: 'پاسخ پشتیبانی',
+  CUSTOMER_REPLIED: 'پاسخ مشتری',
   CLOSED: 'بسته',
 };
 
@@ -32,6 +33,7 @@ export default function SupportPage() {
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [category, setCategory] = useState<string>('CONSULTING_SALES');
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const queryClient = useQueryClient();
@@ -46,14 +48,24 @@ export default function SupportPage() {
       toast.error('موضوع و متن پیام را وارد کنید');
       return;
     }
+    if (attachment && !['image/png', 'image/jpeg', 'image/jpg'].includes(attachment.type)) {
+      toast.error('فقط فایل‌های PNG و JPG مجاز است');
+      return;
+    }
     setCreating(true);
     try {
-      const ticket = await api.createTicket(subject.trim(), body.trim(), category as 'CONSULTING_SALES' | 'TECHNICAL');
+      const ticket = await api.createTicket(
+        subject.trim(),
+        body.trim(),
+        category as 'CONSULTING_SALES' | 'TECHNICAL',
+        attachment ?? undefined,
+      );
       toast.success('تیکت ثبت شد');
       setCreateOpen(false);
       setSubject('');
       setBody('');
       setCategory('CONSULTING_SALES');
+      setAttachment(null);
       queryClient.invalidateQueries({ queryKey: ['support-tickets'] });
       window.location.href = `/support/${ticket.id}`;
     } catch (err: any) {
@@ -64,13 +76,13 @@ export default function SupportPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">پشتیبانی</h1>
-          <p className="text-muted-foreground mt-1">تیکت‌های پشتیبانی و گفتگو با تیم ما</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">پشتیبانی</h1>
+          <p className="text-muted-foreground mt-1 text-sm">تیکت ثبت کنید؛ تیم پشتیبانی در اسرع وقت پاسخ می‌دهد.</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button onClick={() => setCreateOpen(true)} className="shrink-0">
           <Plus className="h-4 w-4 me-2" /> تیکت جدید
         </Button>
       </div>
@@ -78,8 +90,9 @@ export default function SupportPage() {
       <Tabs value={statusFilter} onValueChange={setStatusFilter}>
         <TabsList>
           <TabsTrigger value="all">همه</TabsTrigger>
-          <TabsTrigger value="OPEN">باز</TabsTrigger>
           <TabsTrigger value="IN_PROGRESS">در حال بررسی</TabsTrigger>
+          <TabsTrigger value="SUPPORT_REPLIED">پاسخ پشتیبانی</TabsTrigger>
+          <TabsTrigger value="CUSTOMER_REPLIED">پاسخ مشتری</TabsTrigger>
           <TabsTrigger value="CLOSED">بسته</TabsTrigger>
         </TabsList>
         <TabsContent value={statusFilter} className="mt-4">
@@ -127,12 +140,15 @@ export default function SupportPage() {
       </Tabs>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md" aria-describedby="create-ticket-desc">
+        <DialogContent className="sm:max-w-md">
+          <DialogDescription className="sr-only">
+            فرم ثبت تیکت جدید. موضوع و متن اولیه را وارد کنید.
+          </DialogDescription>
           <DialogHeader>
             <DialogTitle>تیکت جدید</DialogTitle>
-            <DialogDescription id="create-ticket-desc">
+            <p className="text-sm text-muted-foreground">
               موضوع و متن اولیه را وارد کنید. پشتیبانی به‌زودی پاسخ می‌دهد.
-            </DialogDescription>
+            </p>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
@@ -167,6 +183,17 @@ export default function SupportPage() {
                 rows={4}
                 className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm mt-1"
               />
+            </div>
+            <div>
+              <Label>پیوست تصویر (اختیاری)</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">فرمت‌های مجاز: PNG، JPG — حداکثر ۵ مگابایت</p>
+              <Input
+                type="file"
+                accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                className="mt-1"
+                onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
+              />
+              {attachment && <p className="text-xs text-muted-foreground mt-1">{attachment.name}</p>}
             </div>
           </div>
           <DialogFooter>

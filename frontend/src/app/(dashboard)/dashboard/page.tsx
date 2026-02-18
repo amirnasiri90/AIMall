@@ -209,7 +209,7 @@ export default function DashboardHomePage() {
               className="pe-9 w-full"
             />
           </div>
-          <Button type="submit" size="sm" variant="secondary" className="w-full sm:w-auto">
+          <Button type="submit" size="sm" variant="secondary" className="w-full sm:w-auto min-h-[44px]">
             برو به چت
           </Button>
         </form>
@@ -227,7 +227,7 @@ export default function DashboardHomePage() {
                 برای ادامه استفاده از سرویس‌ها، از بخش صورتحساب سکه خریداری کنید.
               </p>
             </div>
-            <Button asChild variant="default" size="sm" className="shrink-0 w-full sm:w-auto">
+            <Button asChild variant="default" size="sm" className="shrink-0 w-full sm:w-auto min-h-[44px]">
               <Link href="/billing">خرید سکه</Link>
             </Button>
           </CardContent>
@@ -267,6 +267,7 @@ export default function DashboardHomePage() {
                       variant="default"
                       onClick={() => handleAcceptInvitation(inv.id)}
                       disabled={acceptingId !== null || rejectingId !== null}
+                      className="min-h-[44px]"
                     >
                       {acceptingId === inv.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                       <span className="me-1">پذیرش</span>
@@ -276,6 +277,7 @@ export default function DashboardHomePage() {
                       variant="outline"
                       onClick={() => handleRejectInvitation(inv.id)}
                       disabled={acceptingId !== null || rejectingId !== null}
+                      className="min-h-[44px]"
                     >
                       {rejectingId === inv.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
                       رد
@@ -354,15 +356,15 @@ export default function DashboardHomePage() {
         <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">دسترسی سریع</h2>
         <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {quickActions.map((action) => (
-            <Link key={action.href} href={action.href}>
-              <Card className="hover:shadow-glass-lg transition-all duration-300 cursor-pointer h-full">
-                <CardContent className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-5 text-center">
+            <Link key={action.href} href={action.href} className="min-touch block min-h-[100px] sm:min-h-0">
+              <Card className="hover:shadow-glass-lg transition-all duration-300 cursor-pointer h-full min-h-[100px] sm:min-h-0">
+                <CardContent className="flex flex-col items-center justify-center gap-2 sm:gap-3 p-4 sm:p-5 text-center min-h-[100px] sm:min-h-0">
                   <div className="rounded-xl bg-primary/10 backdrop-blur-sm p-3">
                     <action.icon className="h-7 w-7 text-primary" />
                   </div>
                   <div>
                     <p className="font-medium text-sm">{action.label}</p>
-                    <p className="text-xs text-muted-foreground">{action.desc}</p>
+                    <p className="text-xs text-muted-foreground hidden sm:block">{action.desc}</p>
                   </div>
                   <ArrowLeft className="h-4 w-4 text-muted-foreground" />
                 </CardContent>
@@ -399,8 +401,8 @@ export default function DashboardHomePage() {
               ) : (
                 <div className="divide-y">
                   {recentConversations.map((c: any) => (
-                    <Link key={c.id} href={`/chat?conv=${c.id}`}>
-                      <div className="flex items-center justify-between p-4 hover:bg-[hsl(var(--glass-bg))] transition-colors">
+                    <Link key={c.id} href={`/chat?conv=${c.id}`} className="block min-touch">
+                      <div className="flex items-center justify-between p-4 min-h-[56px] hover:bg-[hsl(var(--glass-bg))] active:bg-muted/50 transition-colors">
                         <div className="min-w-0 flex-1">
                           <p className="font-medium truncate">{c.title || 'گفتگوی جدید'}</p>
                           <p className="text-xs text-muted-foreground">{formatDate(c.updatedAt ?? c.createdAt)}</p>
@@ -422,9 +424,9 @@ export default function DashboardHomePage() {
               <span className="truncate">مصرف (سکه)</span>
             </h2>
             <Tabs value={range} onValueChange={(v) => setRange(v as 'week' | 'month')}>
-              <TabsList>
-                <TabsTrigger value="week">۷ روز</TabsTrigger>
-                <TabsTrigger value="month">این ماه</TabsTrigger>
+              <TabsList className="h-auto p-0.5">
+                <TabsTrigger value="week" className="min-h-[40px] px-4 py-2">۷ روز</TabsTrigger>
+                <TabsTrigger value="month" className="min-h-[40px] px-4 py-2">این ماه</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>

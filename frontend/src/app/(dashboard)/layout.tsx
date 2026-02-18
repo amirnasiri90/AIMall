@@ -7,6 +7,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useAuthStore, useHydrateAuth } from '@/lib/store';
 import { api } from '@/lib/api';
+import { useLogoUrl } from '@/lib/use-branding';
 import { GenieRail } from '@/components/layout/genie-rail';
 import { MobileSidebar } from '@/components/layout/mobile-sidebar';
 import { ProfileSelectModal } from '@/components/profile-select-modal';
@@ -31,6 +32,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const logoUrl = useLogoUrl();
 
   const handleLogout = () => {
     logout();
@@ -84,7 +86,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </Button>
         <Link href="/dashboard" className="flex items-center gap-2 min-w-0 flex-1 justify-center">
           <div className="relative h-8 w-8 shrink-0">
-            <Image src="/logo.png" alt="AiFO" fill className="object-contain" sizes="32px" />
+            <Image src={logoUrl} alt="AiFO" fill className="object-contain" sizes="32px" unoptimized={logoUrl.startsWith('http') || logoUrl.startsWith('data:')} />
           </div>
           <span className="font-bold text-sm truncate">AiFO</span>
         </Link>
@@ -149,7 +151,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div
             className={cn(
               'flex-1 flex flex-col min-h-0',
-              isChat ? 'p-0 overflow-hidden' : 'p-3 sm:p-6'
+              isChat ? 'p-0 overflow-hidden' : 'p-4 sm:p-6 main-content-mobile pb-safe'
             )}
           >
             <div key={pathname} className="page-transition flex-1 flex flex-col min-h-0">

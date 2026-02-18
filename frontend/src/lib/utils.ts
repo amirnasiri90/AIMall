@@ -17,7 +17,7 @@ export function formatNumber(n: number) {
 }
 
 export function formatPrice(priceIRR: number) {
-  return new Intl.NumberFormat('fa-IR').format(priceIRR) + ' تومان';
+  return new Intl.NumberFormat('fa-IR').format(priceIRR) + ' ریال';
 }
 
 export function formatTime(date: string | Date) {

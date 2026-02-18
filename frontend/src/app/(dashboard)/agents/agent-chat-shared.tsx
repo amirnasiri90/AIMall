@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Send, Loader2, Bot, User, Copy, Check, RotateCcw, ChevronLeft, MessageSquare, LayoutGrid, Bookmark, BarChart3, Settings, BookmarkPlus, Trash2, AlertCircle, Zap, Coins, Gauge, Settings2, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Send, Loader2, Bot, User, Copy, Check, RotateCcw, ChevronLeft, MessageSquare, LayoutGrid, Bookmark, BarChart3, Settings, BookmarkPlus, Trash2, AlertCircle, Zap, Coins, Gauge, Settings2, PanelLeftClose, PanelLeftOpen, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -82,11 +82,30 @@ export function AgentChatPage({ config }: { config: AgentChatConfig }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const { data: agentConversations = [], isLoading: convsLoading } = useQuery({
+    queryKey: ['agent-conversations', agentId, currentOrganizationId],
+    queryFn: () => api.getAgentConversations(agentId, currentOrganizationId),
+  });
+
   const { data: dbMessages, isLoading: msgsLoading } = useQuery({
     queryKey: ['agent-messages', agentId, conversationId],
     queryFn: () => api.getAgentMessages(agentId, conversationId!),
     enabled: !!conversationId,
   });
+
+  // با عوض شدن دستیار، گفتگوی انتخاب‌شده را پاک کن تا سابقهٔ همان دستیار لود شود
+  useEffect(() => {
+    setConversationId(null);
+    setLocalMessages([]);
+    setStreamText('');
+    setStreamMeta(null);
+  }, [agentId]);
+
+  // اگر سابقهٔ گفتگو لود شد و هنوز گفتگی انتخاب نشده، آخرین گفتگو را انتخاب کن
+  useEffect(() => {
+    if (convsLoading || conversationId) return;
+    if (agentConversations.length > 0) setConversationId(agentConversations[0].id);
+  }, [convsLoading, agentConversations, conversationId]);
 
   const allMessages: Message[] = useMemo(() => {
     if (dbMessages && dbMessages.length > 0) return dbMessages;
@@ -354,6 +373,29 @@ export function AgentChatPage({ config }: { config: AgentChatConfig }) {
 
             {/* ناحیه چت */}
             <div className="flex-1 min-w-0 flex flex-col">
+              <div className="flex items-center gap-2 mb-3 flex-shrink-0">
+                <History className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
+                <Select
+                  value={conversationId ?? '__new__'}
+                  onValueChange={(v) => {
+                    if (v === '__new__') startNewSession();
+                    else setConversationId(v);
+                  }}
+                  disabled={streaming}
+                >
+                  <SelectTrigger className="h-9 max-w-[16rem] text-xs" aria-label="انتخاب گفتگو">
+                    <SelectValue placeholder="سابقه گفتگو" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__new__">گفتگوی جدید</SelectItem>
+                    {agentConversations.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        <span className="truncate block max-w-[12rem]" title={c.title}>{c.title || 'بدون عنوان'}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               {chipsFa.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-3 flex-shrink-0">
                   {chipsFa.map((chip) => (
@@ -385,7 +427,7 @@ export function AgentChatPage({ config }: { config: AgentChatConfig }) {
                   <Button variant="outline" size="sm" onClick={() => { setStreamError(null); textareaRef.current?.focus(); }}>تلاش دوباره</Button>
                 </div>
               )}
-              <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              <Card className="flex-1 min-h-0 flex flex-col overflow-hidden" dir="rtl">
                 <ScrollArea className="flex-1 p-4" role="log" aria-live="polite" aria-label="لیست پیام‌های چت">
                   {msgsLoading && !allMessages.length ? (
                     <div className="flex items-center justify-center py-12">
@@ -397,15 +439,15 @@ export function AgentChatPage({ config }: { config: AgentChatConfig }) {
                       <p className="text-sm">هنوز پیامی نفرستادی — یکی از پیشنهادها را بزن یا خودت بنویس (دقیق و بازیگوش).</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-4 text-right">
                       {allMessages.map((m) => (
                         <div key={m.id} className={cn('flex gap-3', m.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
                           <div className={cn('h-8 w-8 rounded-full flex items-center justify-center shrink-0', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
                             {m.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                           </div>
-                          <div className={cn('flex-1 min-w-0 rounded-lg p-3 text-sm', m.role === 'user' ? 'bg-primary/10' : 'bg-muted/50')}>
+                          <div className={cn('flex-1 min-w-0 rounded-lg p-3 text-sm text-right', m.role === 'user' ? 'bg-primary/10' : 'bg-muted/50')}>
                             {m.role === 'assistant' ? (
-                              <div className="prose prose-sm dark:prose-invert max-w-none">
+                              <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-right prose-ul:list-inside prose-ol:list-inside prose-li:text-right" dir="rtl">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
                               </div>
                             ) : (
@@ -425,10 +467,10 @@ export function AgentChatPage({ config }: { config: AgentChatConfig }) {
                         </div>
                       ))}
                       {streamText && (
-                        <div className="flex gap-3 flex-row">
+                        <div className="flex gap-3 flex-row-reverse text-right">
                           <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0"><Bot className="h-4 w-4" /></div>
-                          <div className="flex-1 min-w-0 rounded-lg p-3 text-sm bg-muted/50">
-                            <div className="prose prose-sm dark:prose-invert max-w-none">
+                          <div className="flex-1 min-w-0 rounded-lg p-3 text-sm bg-muted/50 text-right">
+                            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-right prose-ul:list-inside prose-ol:list-inside prose-li:text-right" dir="rtl">
                               <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamText}</ReactMarkdown>
                             </div>
                             {streaming && <Loader2 className="h-4 w-4 animate-spin mt-2" />}
@@ -439,8 +481,8 @@ export function AgentChatPage({ config }: { config: AgentChatConfig }) {
                   )}
                   <div ref={messagesEndRef} />
                 </ScrollArea>
-                <div className="p-3 border-t flex gap-2 flex-shrink-0">
-                  <Textarea ref={textareaRef} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder="پیام خود را بنویسید..." className="min-h-[80px] resize-none" disabled={streaming} aria-label="متن پیام" />
+                <div className="p-3 border-t flex gap-2 flex-shrink-0 flex-row-reverse">
+                  <Textarea ref={textareaRef} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder="پیام خود را بنویسید..." className="min-h-[80px] resize-none text-right" dir="rtl" disabled={streaming} aria-label="متن پیام" />
                   <Button onClick={() => sendMessage()} disabled={streaming || !message.trim()} size="icon" className="shrink-0 h-[80px] w-12" aria-label={streaming ? 'در حال ارسال' : 'ارسال پیام'}>
                     {streaming ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                   </Button>
