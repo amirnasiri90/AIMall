@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>صفحهٔ اصلی — ویجت سرچ</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" />
+  <style>
+    body { font-family: Vazirmatn, Tahoma, sans-serif; padding: 2rem; margin: 0; }
+    h1 { text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>به پلتفرم خوش آمدید</h1>
+
+  <!-- فقط همین یک div را هر جا خواستی بگذار؛ ویجت همینجا رندر می‌شود -->
+  <div id="aimall-intent-search"></div>
+
+  <!-- پیکربندی: آدرس پنل و API (قبل از لود اسکریپت قرار بده) -->
+  <script>
+    window.AIMALL_INTENT_SEARCH_CONFIG = {
+      baseUrl: 'https://panel.aifoapp.ir',   // آدرس پنل برای لینک «ورود به بخش»
+      apiUrl: 'https://api.aifoapp.ir/api/v1', // آدرس API برای تحلیل با AI (با شماره موبایل)
+      containerId: 'aimall-intent-search'
+    };
+  </script>
+  <script src="aimall-intent-search.js"></script>
+</body>
+</html>
