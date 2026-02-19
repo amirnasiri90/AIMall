@@ -14,10 +14,12 @@ import { Sparkles } from 'lucide-react';
 
 const STORAGE_KEY = 'aimall_seen_release_id';
 
-const DEFAULT_MESSAGE = `
-آپدیت جدید پنل اعمال شد.
-بخش پشتیبانی و تیکت‌ها بازطراحی شده: وضعیت‌های در حال بررسی، پاسخ پشتیبانی و پاسخ مشتری، امکان بازگشایی تیکت بسته، پیوست تصویر (PNG/JPG) و رابط حرفه‌ای‌تر در پنل کاربر و ادمین.
-`;
+const DEFAULT_MESSAGE = `آپدیت جدید پنل اعمال شد.
+
+• اصلاح دکمه تم روشن/تیره در نسخه موبایل
+• نمایش پیام آپدیت فقط یک‌بار تا آپدیت بعدی
+• حذف گزینه شارژ آزمایشی از صورتحساب
+• ویجت سرچ «میخوای چه کار کنی؟» برای صفحهٔ اصلی (بدون API و شماره)`;
 
 export function UpdateNotice() {
   const [open, setOpen] = useState(false);
@@ -34,7 +36,11 @@ export function UpdateNotice() {
         const id = data?.releaseId ?? '0';
         setReleaseId(id);
         const seen = localStorage.getItem(STORAGE_KEY);
-        if (id && id !== seen) setOpen(true);
+        // فقط یک‌بار تا آپدیت بعدی: اگر این نسخه را ندیده، نشان بده و بلافاصله در ذخیره‌گاه علامت بزن
+        if (id && id !== seen) {
+          setOpen(true);
+          localStorage.setItem(STORAGE_KEY, id);
+        }
       })
       .catch(() => {
         if (cancelled) return;
@@ -46,19 +52,9 @@ export function UpdateNotice() {
     };
   }, []);
 
-  const handleClose = () => {
-    setOpen(false);
-    if (releaseId && typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, releaseId);
-    }
-  };
+  const handleClose = () => setOpen(false);
 
-  const handleOpenChange = (o: boolean) => {
-    setOpen(o);
-    if (!o && releaseId && typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, releaseId);
-    }
-  };
+  const handleOpenChange = (o: boolean) => setOpen(o);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

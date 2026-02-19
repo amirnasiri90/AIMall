@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
-  Coins, Loader2, CreditCard, Sparkles, RefreshCw, FileCheck,
+  Coins, Loader2, CreditCard, RefreshCw, FileCheck,
   ArrowUpCircle, ArrowDownCircle, Receipt, Filter, ChevronDown, Tag, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,8 +25,6 @@ export default function BillingPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const bc = user?.billingContext;
-  const [topupAmount, setTopupAmount] = useState('');
-  const [topupLoading, setTopupLoading] = useState(false);
   const [payLoading, setPayLoading] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [orderPage, setOrderPage] = useState(1);
@@ -49,24 +47,6 @@ export default function BillingPage() {
     queryKey: ['payment-orders', orderPage],
     queryFn: () => api.getPaymentOrders(orderPage, 10),
   });
-
-  const handleMockTopup = async () => {
-    const amount = parseInt(topupAmount);
-    if (!amount || amount <= 0) { toast.error('مقدار نامعتبر'); return; }
-    setTopupLoading(true);
-    try {
-      await api.mockTopup(amount);
-      toast.success(`${amount} سکه اضافه شد`);
-      setTopupAmount('');
-      queryClient.invalidateQueries({ queryKey: ['balance'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['ledger-summary'] });
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setTopupLoading(false);
-    }
-  };
 
   const openInvoiceDialog = (pkg: any) => {
     setInvoiceDialog({ pkg });
@@ -275,12 +255,11 @@ export default function BillingPage() {
         </div>
       )}
 
-      {/* Tabs: Transactions / Payment Orders / Mock Topup */}
+      {/* Tabs: Transactions / Payment Orders */}
       <Tabs defaultValue="transactions">
         <TabsList>
           <TabsTrigger value="transactions">تراکنش‌ها</TabsTrigger>
           <TabsTrigger value="orders">سفارش‌های پرداخت</TabsTrigger>
-          <TabsTrigger value="topup">شارژ آزمایشی</TabsTrigger>
         </TabsList>
 
         {/* Transactions Tab */}
@@ -414,23 +393,6 @@ export default function BillingPage() {
                   )}
                 </>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Mock Topup Tab */}
-        <TabsContent value="topup" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>شارژ آزمایشی</CardTitle>
-              <CardDescription>برای تست، مقدار دلخواه سکه اضافه کنید</CardDescription>
-            </CardHeader>
-            <CardContent className="flex gap-4">
-              <Input type="number" placeholder="تعداد سکه" value={topupAmount} onChange={(e) => setTopupAmount(e.target.value)} className="max-w-xs" dir="ltr" />
-              <Button onClick={handleMockTopup} disabled={topupLoading}>
-                {topupLoading ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Sparkles className="me-2 h-4 w-4" />}
-                شارژ
-              </Button>
             </CardContent>
           </Card>
         </TabsContent>
