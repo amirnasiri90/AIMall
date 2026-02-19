@@ -61,7 +61,9 @@ export function GenieRail({ onOpenIntentGuide }: { onOpenIntentGuide?: () => voi
   const pathname = usePathname();
   const router = useRouter();
   const logoUrl = useLogoUrl();
-  const { theme, setTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
+  const effectiveTheme = resolvedTheme ?? 'light';
+  const toggleTheme = () => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark');
   const { user, currentOrganizationId, logout } = useAuthStore();
   const { data: orgs } = useQuery({
     queryKey: ['organizations'],
@@ -192,9 +194,9 @@ export function GenieRail({ onOpenIntentGuide }: { onOpenIntentGuide?: () => voi
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="right" className="rounded-2xl border border-border bg-popover text-popover-foreground">
-            <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="rounded-lg">
-              {theme === 'dark' ? <Sun className="w-4 h-4 me-2" /> : <Moon className="w-4 h-4 me-2" />}
-              {theme === 'dark' ? 'تم روشن' : 'تم تاریک'}
+            <DropdownMenuItem onClick={toggleTheme} className="rounded-lg">
+              {effectiveTheme === 'dark' ? <Sun className="w-4 h-4 me-2" /> : <Moon className="w-4 h-4 me-2" />}
+              {effectiveTheme === 'dark' ? 'تم روشن' : 'تم تاریک'}
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/settings" className="rounded-lg flex items-center">

@@ -9,7 +9,9 @@ import { useState } from 'react';
 import { MobileSidebar } from './mobile-sidebar';
 
 export function Header() {
-  const { theme, setTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
+  const effectiveTheme = resolvedTheme ?? 'light';
+  const toggleTheme = () => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark');
   const { user, logout } = useAuthStore();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -29,9 +31,9 @@ export function Header() {
         <div className="flex-1" />
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <Button variant="ghost" size="icon" onClick={toggleTheme} className="relative" aria-label={effectiveTheme === 'dark' ? 'تم روشن' : 'تم تاریک'}>
+            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:invisible dark:scale-0 dark:absolute dark:-rotate-90" />
+            <Moon className="h-4 w-4 invisible scale-0 absolute rotate-90 transition-all dark:visible dark:rotate-0 dark:scale-100 dark:static" />
             <span className="sr-only">تغییر تم</span>
           </Button>
 

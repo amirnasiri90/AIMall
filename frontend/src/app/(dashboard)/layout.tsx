@@ -31,7 +31,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { token, user, setUser, logout, _hydrated } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const effectiveTheme = resolvedTheme ?? theme ?? 'light';
+  const toggleTheme = () => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark');
   const [loading, setLoading] = useState(true);
   const [showRetry, setShowRetry] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -148,6 +150,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" onClick={() => setIntentGuideOpen(true)} aria-label="میخوای چه کار کنی؟">
             <Sparkles className="h-5 w-5" />
           </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-11 w-11 shrink-0 relative"
+            onClick={toggleTheme}
+            aria-label={effectiveTheme === 'dark' ? 'تم روشن' : 'تم تاریک'}
+          >
+            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:invisible dark:scale-0 dark:absolute dark:rotate-90" />
+            <Moon className="h-5 w-5 invisible scale-0 absolute rotate-90 transition-all dark:visible dark:rotate-0 dark:scale-100 dark:static" />
+          </Button>
           <Link
             href="/billing"
             className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-muted/80 transition-colors min-w-0"
@@ -167,9 +179,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <p className="text-sm font-medium truncate">{user?.name || 'کاربر'}</p>
                 <p className="text-xs text-muted-foreground">{user?.coins ?? 0} سکه</p>
               </div>
-              <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="rounded-lg gap-2">
-                {theme === 'dark' ? <Sun className="h-4 w-4 shrink-0" /> : <Moon className="h-4 w-4 shrink-0" />}
-                {theme === 'dark' ? 'تم روشن' : 'تم تاریک'}
+              <DropdownMenuItem onClick={toggleTheme} onPointerDown={(e) => e.currentTarget.releasePointerCapture(e.pointerId)} className="rounded-lg gap-2 min-h-[44px]">
+                {effectiveTheme === 'dark' ? <Sun className="h-4 w-4 shrink-0" /> : <Moon className="h-4 w-4 shrink-0" />}
+                {effectiveTheme === 'dark' ? 'تم روشن' : 'تم تاریک'}
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/settings" className="rounded-lg flex items-center gap-2">
