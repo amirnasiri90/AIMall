@@ -16,12 +16,11 @@
   <!-- فقط همین یک div را هر جا خواستی بگذار؛ ویجت همینجا رندر می‌شود -->
   <div id="aimall-intent-search"></div>
 
-  <!-- پیکربندی: آدرس پنل و API (قبل از لود اسکریپت قرار بده) -->
+  <!-- پیکربندی: آدرس پنل (قبل از لود اسکریپت قرار بده) -->
   <script>
     window.AIMALL_INTENT_SEARCH_CONFIG = {
       baseUrl: 'https://panel.aifoapp.ir',   // آدرس پنل برای لینک «ورود به بخش»
-      apiUrl: 'https://api.aifoapp.ir/api/v1', // آدرس API برای تحلیل با AI (با شماره موبایل)
-      containerId: 'aimall-intent-search'
+      containerId: 'aimall-intent-search'    // اختیاری
     };
   </script>
   <script src="aimall-intent-search.js"></script>
