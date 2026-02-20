@@ -32,12 +32,15 @@ log_info "Prisma generate و migrate..."
 log_info "Build Backend..."
 (cd "$PROJECT_ROOT/backend" && (npm run build:prod 2>/dev/null || (rm -rf dist && npm run build)))
 
-RELEASE_ID=$(git rev-parse --short HEAD 2>/dev/null || echo "build-$(date +%Y%m%d%H%M)")
-echo "{\"releaseId\":\"$RELEASE_ID\"}" > "$PROJECT_ROOT/frontend/public/release.json"
-log_info "Release ID: $RELEASE_ID"
-
 log_info "Build Frontend (پاک‌سازی .next برای بیلد تمیز)..."
 (cd "$PROJECT_ROOT/frontend" && rm -rf .next && npm run build)
+
+RELEASE_ID=$(git rev-parse --short HEAD 2>/dev/null || echo "build-$(date +%Y%m%d%H%M)")
+echo "{\"releaseId\":\"$RELEASE_ID\"}" > "$PROJECT_ROOT/frontend/public/release.json"
+log_info "Release ID نوشته شد: $RELEASE_ID → frontend/public/release.json"
+if [ -f "$PROJECT_ROOT/frontend/public/release.json" ]; then
+  cat "$PROJECT_ROOT/frontend/public/release.json"
+fi
 
 if command -v pm2 &>/dev/null; then
   log_info "ری‌استارت سرویس‌های PM2 (از مسیر همین پروژه)..."

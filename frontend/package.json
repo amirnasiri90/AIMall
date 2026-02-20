@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0",
     "dev:local": "next dev",
-    "build": "next build",
+    "build": "node scripts/write-release-json.js && next build",
     "start": "next start --hostname 0.0.0.0"
   },
   "dependencies": {
