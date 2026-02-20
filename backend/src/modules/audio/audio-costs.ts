@@ -19,7 +19,9 @@ export const STT_MODEL_COSTS: Record<string, number> = {
 };
 
 export function getTtsModelCost(model?: string): number {
-  const cost = model ? TTS_MODEL_COSTS[model] : undefined;
+  if (!model) return 3;
+  if (model.startsWith('elevenlabs/')) return TTS_MODEL_COSTS['elevenlabs/multilingual-v2'] ?? 5;
+  const cost = TTS_MODEL_COSTS[model];
   return typeof cost === 'number' ? cost : 3;
 }
 

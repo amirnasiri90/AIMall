@@ -16,6 +16,7 @@ import {
   History,
   Coins,
   Sparkles,
+  Music2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -31,15 +32,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useEffect } from 'react';
 
 /** وقتی true شود، استودیو صوت فعال است. */
-const AUDIO_STUDIO_ENABLED = false;
+const AUDIO_STUDIO_ENABLED = true;
 
-const TTS_VOICES = [
-  { value: 'alloy', label: 'Alloy' },
-  { value: 'echo', label: 'Echo' },
-  { value: 'fable', label: 'Fable' },
-  { value: 'onyx', label: 'Onyx' },
-  { value: 'nova', label: 'Nova' },
-  { value: 'shimmer', label: 'Shimmer' },
+/** صداهای OpenAI با برچسب فارسی */
+const TTS_VOICES_OPENAI = [
+  { value: 'alloy', label: 'Alloy', labelFa: 'آلی' },
+  { value: 'echo', label: 'Echo', labelFa: 'اکو' },
+  { value: 'fable', label: 'Fable', labelFa: 'فِیبل' },
+  { value: 'onyx', label: 'Onyx', labelFa: 'اونیکس' },
+  { value: 'nova', label: 'Nova', labelFa: 'نووا' },
+  { value: 'shimmer', label: 'Shimmer', labelFa: 'شیمر' },
 ];
 
 const TTS_SPEEDS = [
@@ -48,6 +50,14 @@ const TTS_SPEEDS = [
   { value: 1, label: '۱' },
   { value: 1.25, label: '۱.۲۵' },
   { value: 1.5, label: '۱.۵' },
+];
+
+/** پیشنهادهای سریع برای متن TTS (فارسی و انگلیسی) */
+const TTS_QUICK_PROMPTS = [
+  { text: 'سلام، این یک نمونهٔ متن به گفتار است.', label: 'نمونه فارسی' },
+  { text: 'خوش آمدید به استودیو صوت.', label: 'خوش‌آمدگویی' },
+  { text: 'امروز هوا خوب است.', label: 'جمله کوتاه' },
+  { text: 'Welcome to the audio studio.', label: 'English' },
 ];
 
 /** سکه هر مدل TTS (هماهنگ با بک‌اند) — بدون درخواست API تا از 404 جلوگیری شود */
@@ -98,15 +108,51 @@ export default function AudioStudioPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [showComingSoonModal, setShowComingSoonModal] = useState(false);
+  const [sfxText, setSfxText] = useState('');
+  const [sfxLoading, setSfxLoading] = useState(false);
+  const [sfxResult, setSfxResult] = useState<{ audioUrl?: string; coinCost?: number } | null>(null);
 
   useEffect(() => {
     if (!AUDIO_STUDIO_ENABLED) setShowComingSoonModal(true);
   }, []);
 
+  useEffect(() => {
+    if (ttsModel.startsWith('elevenlabs/') && ttsOptions?.voices?.length) {
+      setTtsVoice((v) => (ttsOptions.voices.some((x) => x.id === v) ? v : ttsOptions.voices[0].id));
+    } else if (!ttsModel.startsWith('elevenlabs/')) {
+      setTtsVoice((v) => (TTS_VOICES_OPENAI.some((x) => x.value === v) ? v : 'alloy'));
+    }
+  }, [ttsModel, ttsOptions?.voices]);
+
   const { data: ttsModels } = useQuery({ queryKey: ['models', 'tts'], queryFn: () => api.getModels('tts') });
   const { data: sttModels } = useQuery({ queryKey: ['models', 'stt'], queryFn: () => api.getModels('stt') });
+  const { data: ttsOptions } = useQuery({
+    queryKey: ['audio', 'tts-options'],
+    queryFn: () => api.getAudioTtsOptions(),
+    staleTime: 60_000,
+  });
 
-  const ttsCost = TTS_COINS[ttsModel] ?? DEFAULT_TTS_COINS;
+  const ttsModelsMerged = useMemo(() => {
+    const base = (ttsModels as { id: string; name: string; coinCost?: number }[]) || [];
+    const fromApi = ttsOptions?.elevenlabsModels || [];
+    const seen = new Set(base.map((m) => m.id));
+    const extra = fromApi
+      .filter((m) => !seen.has(`elevenlabs/${m.id}`))
+      .map((m) => ({ id: `elevenlabs/${m.id}`, name: m.name, coinCost: m.coinCost ?? 5 }));
+    return [...base, ...extra];
+  }, [ttsModels, ttsOptions?.elevenlabsModels]);
+
+  const ttsVoicesList = useMemo(() => {
+    if (ttsModel.startsWith('elevenlabs/')) {
+      const list = ttsOptions?.voices?.length
+        ? ttsOptions.voices.map((v) => ({ value: v.id, label: v.nameFa || v.name, labelFa: v.nameFa }))
+        : [{ value: '21m00Tcm4TlvDq8ikWAM', label: 'راشل', labelFa: 'راشل' }];
+      return list;
+    }
+    return TTS_VOICES_OPENAI.map((v) => ({ value: v.value, label: v.labelFa || v.label, labelFa: v.labelFa }));
+  }, [ttsModel, ttsOptions?.voices]);
+
+  const ttsCost = TTS_COINS[ttsModel] ?? (ttsModel.startsWith('elevenlabs/') ? 5 : DEFAULT_TTS_COINS);
   const sttCost = STT_COINS[sttModel] ?? DEFAULT_STT_COINS;
   const history = useMemo(() => {
     let list = historyList;
@@ -190,6 +236,24 @@ export default function AudioStudioPage() {
     }
   };
 
+  const handleSfx = async () => {
+    setSfxLoading(true);
+    setSfxResult(null);
+    try {
+      const data = await api.createSoundEffect({ text: sfxText.trim() || 'کلیک نرم' });
+      setSfxResult(data);
+      setHistoryList((prev) => [
+        { id: `sfx-${Date.now()}`, type: 'tts', input: sfxText || 'افکت صوتی', output: data.audioUrl, model: 'sound_effect', coinCost: data.coinCost, createdAt: new Date().toISOString() },
+        ...prev,
+      ]);
+      toast.success(`افکت صوتی ساخته شد (${data.coinCost ?? 0} سکه)`);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSfxLoading(false);
+    }
+  };
+
   const copySttText = () => {
     if (sttResult?.text) {
       navigator.clipboard.writeText(sttResult.text);
@@ -259,9 +323,10 @@ export default function AudioStudioPage() {
       </div>
 
       <Tabs defaultValue="tts" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="tts">تبدیل متن به گفتار</TabsTrigger>
           <TabsTrigger value="stt">تبدیل گفتار به متن</TabsTrigger>
+          <TabsTrigger value="sfx">افکت صوتی / موسیقی</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tts" className="mt-6">
@@ -275,10 +340,25 @@ export default function AudioStudioPage() {
                 <Textarea
                   value={ttsText}
                   onChange={(e) => setTtsText(e.target.value)}
-                  placeholder="متن خود را اینجا بنویسید..."
+                  placeholder="متن خود را اینجا بنویسید (فارسی یا انگلیسی)..."
                   rows={6}
                   className="rounded-xl"
                 />
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-xs text-muted-foreground self-center">پیشنهاد متن:</span>
+                  {TTS_QUICK_PROMPTS.map((p) => (
+                    <Button
+                      key={p.label}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl"
+                      onClick={() => setTtsText(p.text)}
+                    >
+                      {p.label}
+                    </Button>
+                  ))}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>مدل گفتار</Label>
@@ -287,7 +367,7 @@ export default function AudioStudioPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {ttsModels?.map((m: { id: string; name: string; coinCost?: number }) => (
+                        {ttsModelsMerged.map((m) => (
                           <SelectItem key={m.id} value={m.id}>
                             <span className="flex items-center gap-2">
                               <Volume2 className="h-4 w-4 text-muted-foreground" />
@@ -306,7 +386,7 @@ export default function AudioStudioPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {TTS_VOICES.map((v) => (
+                        {ttsVoicesList.map((v) => (
                           <SelectItem key={v.value} value={v.value}>
                             {v.label}
                           </SelectItem>
@@ -510,6 +590,73 @@ export default function AudioStudioPage() {
                   <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                     <Mic className="h-16 w-16 opacity-20 mb-4" />
                     <p>متن استخراج شده اینجا نمایش داده می‌شود</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="sfx" className="mt-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card className="rounded-2xl border-border/80 bg-card/50 overflow-hidden">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Music2 className="h-5 w-5" />
+                  افکت صوتی / موسیقی
+                </CardTitle>
+                <CardDescription>با ElevenLabs از توضیح متنی، افکت یا صدای پس‌زمینه بسازید (فارسی یا انگلیسی)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Textarea
+                  value={sfxText}
+                  onChange={(e) => setSfxText(e.target.value)}
+                  placeholder="مثال: صدای باران آرام، موسیقی پس‌زمینه فیلم، کلیک دکمه..."
+                  rows={4}
+                  className="rounded-xl"
+                />
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Coins className="h-4 w-4" />
+                  <span>۵ سکه برای هر افکت</span>
+                </div>
+                <Button onClick={handleSfx} disabled={sfxLoading} className="w-full rounded-xl">
+                  {sfxLoading ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Music2 className="me-2 h-4 w-4" />}
+                  ساخت افکت صوتی
+                </Button>
+              </CardContent>
+            </Card>
+            <Card className="rounded-2xl border-border/80 bg-card/50 overflow-hidden">
+              <CardHeader>
+                <CardTitle>خروجی</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {sfxResult?.audioUrl && isPlayableAudioUrl(sfxResult.audioUrl) ? (
+                  <div className="space-y-4">
+                    <audio ref={audioRef} src={sfxResult.audioUrl} controls className="w-full rounded-xl" />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl"
+                        onClick={() => {
+                          if (sfxResult.audioUrl) {
+                            const a = document.createElement('a');
+                            a.href = sfxResult.audioUrl;
+                            a.download = `sfx-${Date.now()}.mp3`;
+                            a.click();
+                          }
+                        }}
+                      >
+                        <Download className="h-4 w-4 me-1" />
+                        دانلود
+                      </Button>
+                      <Badge variant="secondary">{sfxResult.coinCost ?? 0} سکه</Badge>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <Music2 className="h-16 w-16 opacity-20 mb-4" />
+                    <p>خروجی افکت صوتی اینجا نمایش داده می‌شود</p>
                   </div>
                 )}
               </CardContent>

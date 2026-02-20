@@ -301,6 +301,10 @@ export const api = {
     const qs = sp.toString();
     return request<any[]>(`/audio/history${qs ? `?${qs}` : ''}`);
   },
+  getAudioTtsOptions: () =>
+    request<{ voices: { id: string; name: string; nameFa: string }[]; elevenlabsModels: { id: string; name: string; coinCost: number }[] }>('/audio/tts-options'),
+  createSoundEffect: (data: { text: string; durationSeconds?: number; promptInfluence?: number; loop?: boolean }) =>
+    request<{ audioUrl: string; coinCost: number }>('/audio/sound-effect', { method: 'POST', body: JSON.stringify(data) }),
   textToSpeech: (data: { text: string; voice?: string; model?: string; speed?: number; language?: string }) =>
     request<{ audioUrl?: string; duration?: number; model?: string; coinCost?: number }>('/audio/tts', { method: 'POST', body: JSON.stringify(data) }),
   textToSpeechAsync: (data: any) => request('/audio/tts/async', { method: 'POST', body: JSON.stringify(data) }),

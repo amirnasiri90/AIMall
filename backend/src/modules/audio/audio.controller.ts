@@ -19,6 +19,11 @@ export class AudioController {
     private jobsService: JobsService,
   ) {}
 
+  @Get('tts-options')
+  getTtsOptions() {
+    return this.audioService.getTtsOptions();
+  }
+
   @Post('estimate')
   estimate(@Body() body: { type: 'tts' | 'stt'; model?: string }) {
     return this.audioService.estimate(body.type, body.model);
@@ -63,6 +68,18 @@ export class AudioController {
       model: body.model,
       speed: body.speed,
       language: body.language,
+    });
+  }
+
+  @Post('sound-effect')
+  createSoundEffect(
+    @CurrentUser() user: any,
+    @Body() body: { text: string; durationSeconds?: number; promptInfluence?: number; loop?: boolean },
+  ) {
+    return this.audioService.createSoundEffect(user.id, body.text, {
+      durationSeconds: body.durationSeconds,
+      promptInfluence: body.promptInfluence,
+      loop: body.loop,
     });
   }
 

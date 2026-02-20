@@ -18,6 +18,12 @@ export class ProviderResolverService {
 
   /** Resolve (section, modelId) to provider + model + apiKey. Uses first mapping entry if modelId not found. */
   async resolve(section: ServiceSection, modelId?: string): Promise<ResolvedProvider | null> {
+    // مدل‌های داینامیک ElevenLabs: هر modelId به شکل elevenlabs/<model_id> به ElevenLabs resolve می‌شود
+    if (section === 'tts' && modelId?.startsWith('elevenlabs/')) {
+      const apiKey = await this.aiProviderConfig.getApiKeyForProvider('elevenlabs');
+      if (!apiKey) return null;
+      return { providerKey: 'elevenlabs', modelId, apiKey };
+    }
     const entries = await this.serviceMapping.getModelsForSection(section);
     if (!entries.length) return null;
     const entry = modelId
