@@ -17,6 +17,9 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 
 [ -d .git ] || { log_warn "پوشهٔ .git یافت نشد؛ احتمالاً کلون نشده. به‌روزرسانی رد شد."; exit 0; }
 
+# فایل تولیدشده را حذف کن تا git pull با حذف آن در ریپو conflict نگیرد
+rm -f "$PROJECT_ROOT/frontend/public/release.json"
+
 log_info "دریافت آخرین تغییرات از Git..."
 git pull --rebase || git pull || true
 
