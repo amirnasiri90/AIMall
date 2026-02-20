@@ -76,7 +76,7 @@ export class AiProviderConfigService {
     if (!row) throw new NotFoundException('ارائه‌دهنده یافت نشد');
     const data: { displayName?: string; apiKey?: string | null; config?: string | null; isEnabled?: boolean } = {};
     if (body.displayName !== undefined) data.displayName = body.displayName;
-    if (body.apiKey !== undefined) data.apiKey = body.apiKey === '' ? null : encryptApiKey(body.apiKey);
+    if (body.apiKey !== undefined) data.apiKey = body.apiKey === '' ? null : encryptApiKey(String(body.apiKey).trim());
     if (body.config !== undefined) data.config = body.config == null ? null : JSON.stringify(body.config);
     if (body.isEnabled !== undefined) data.isEnabled = body.isEnabled;
     const updated = await this.prisma.aiProviderConfig.update({ where: { id }, data });
@@ -209,21 +209,39 @@ export class AiProviderConfigService {
         return { ok: true };
       }
       case 'elevenlabs': {
-        const voicesUrl = 'https://api.elevenlabs.io/v1/voices';
-        const res = await fetch(voicesUrl, {
+        const key = (apiKey || '').trim();
+        if (!key) return { ok: false, message: 'API key خالی است.' };
+        const headers = { 'xi-api-key': key, 'Content-Type': 'application/json' };
+        let responsePreview = '';
+
+        // اول با /v1/models اعتبار کلید را چک می‌کنیم (مستندات رسمی)
+        const modelsRes = await fetch('https://api.elevenlabs.io/v1/models', {
           method: 'GET',
-          headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
+          headers,
         });
+        const modelsBody = await modelsRes.text();
+        responsePreview += `GET /v1/models → HTTP ${modelsRes.status}\n`;
+        if (modelsRes.ok) {
+          try {
+            const arr = JSON.parse(modelsBody);
+            if (Array.isArray(arr)) responsePreview += `تعداد مدل‌ها: ${arr.length}\n`;
+          } catch {}
+        } else {
+          responsePreview += (modelsBody.slice(0, 200) || modelsRes.statusText) + '\n';
+        }
+
+        const voicesUrl = 'https://api.elevenlabs.io/v1/voices';
+        const res = await fetch(voicesUrl, { method: 'GET', headers });
         const contentType = res.headers.get('content-type') || '';
         const rawBody = await res.text();
-        let responsePreview = `GET ${voicesUrl}\nHTTP ${res.status} ${res.statusText}\nContent-Type: ${contentType}\n`;
+        responsePreview += `\nGET ${voicesUrl}\nHTTP ${res.status} ${res.statusText}\nContent-Type: ${contentType}\n`;
         if (rawBody.length > 0) {
           const preview = rawBody.length > 1200 ? rawBody.slice(0, 1200) + '\n... (کوتاه‌شده)' : rawBody;
           try {
             const parsed = JSON.parse(rawBody);
             const voiceCount = Array.isArray(parsed?.voices) ? parsed.voices.length : Array.isArray(parsed) ? parsed.length : null;
-            responsePreview += voiceCount != null ? `\nتعداد صداها: ${voiceCount}\n` : '';
-            responsePreview += `\n--- نمونه پاسخ (${Math.min(rawBody.length, 1200)} کاراکتر) ---\n${preview}`;
+            if (voiceCount != null) responsePreview += `تعداد صداها: ${voiceCount}\n`;
+            responsePreview += `\n--- نمونه پاسخ ---\n${preview}`;
           } catch {
             responsePreview += `\n--- بدنه خام ---\n${preview}`;
           }
@@ -241,39 +259,34 @@ export class AiProviderConfigService {
           if (data !== null && typeof data === 'object') return { ok: true, responsePreview };
           return { ok: false, message: 'پاسخ نامعتبر از API', responsePreview };
         }
-        if (res.status === 401) return { ok: false, message: 'API key نامعتبر است.', responsePreview };
+        if (res.status === 401) return { ok: false, message: 'API key نامعتبر است. کلید را بدون فاصلهٔ اضافه کپی کنید و از elevenlabs.io/app/settings/api-keys یک کلید با دسترسی «Text to Speech» بسازید.', responsePreview };
         if (res.status === 429) return { ok: false, message: 'محدودیت درخواست (۴۲۹). سهمیه ElevenLabs را بررسی کنید.', responsePreview };
         if (res.status === 403) {
-          responsePreview += '\n\n--- تشخیص: تست /v1/user (اعتبار کلید) ---\n';
-          const userRes = await fetch('https://api.elevenlabs.io/v1/user', {
-            method: 'GET',
-            headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
-          });
-          const userBody = await userRes.text();
-          responsePreview += `GET /v1/user → HTTP ${userRes.status}\n`;
-          if (userRes.ok) {
-            responsePreview += 'کلید معتبر است (اکانت شناخته شد) ولی به /v1/voices دسترسی ندارد.\n';
-          } else {
-            responsePreview += (userBody.slice(0, 300) || userRes.statusText) + '\n';
+          const modelsOk = modelsRes.ok;
+          if (modelsOk) {
+            return {
+              ok: true,
+              message: 'کلید معتبر است (/v1/models موفق). دسترسی به لیست صداها (۴۰۳) محدود است؛ در استودیو صوت تولید TTS باید با همین کلید کار کند.',
+              responsePreview,
+            };
           }
-          responsePreview += '\n--- تست جایگزین با TTS ---\n';
+          responsePreview += '\n--- تست TTS ---\n';
           const voiceId = '21m00Tcm4TlvDq8ikWAM';
           const ttsRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_32`, {
             method: 'POST',
-            headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ text: '.', model_id: 'eleven_multilingual_v2' }),
           });
           const ttsBody = await ttsRes.text();
           responsePreview += `POST /v1/text-to-speech → HTTP ${ttsRes.status}\n`;
           if (ttsRes.ok) {
-            responsePreview += 'پاسخ: صوت با موفقیت دریافت شد.\n';
-            return { ok: true, message: 'کلید معتبر است. دسترسی به لیست صداها (۴۰۳) ندارید؛ تولید متن به صوت باید کار کند.', responsePreview };
+            return { ok: true, message: 'کلید معتبر است. TTS کار می‌کند؛ فقط دسترسی به لیست صداها (۴۰۳) محدود است.', responsePreview };
           }
           responsePreview += ttsBody.slice(0, 500) + (ttsBody.length > 500 ? '\n...' : '');
-          const userOk = userRes.ok;
-          const msg = userOk
-            ? 'کلید معتبر است ولی به Voices و TTS دسترسی ندارد. در ElevenLabs برای این کلید هنگام ساخت یا در Edit دسترسی «Text to Speech» را فعال کنید.'
-            : 'این کلید برای Speech API شناخته نشد (احتمالاً از نوع دیگری است). از لینک elevenlabs.io/app/settings/api-keys یک کلید جدید بسازید و در مرحلهٔ ساخت دسترسی Text to Speech را فعال کنید.';
+          const all403 = !modelsOk && res.status === 403 && ttsRes.status === 403;
+          const msg = all403
+            ? 'محدودیت منطقه‌ای (۴۰۳): درخواست‌ها از سمت سرور (بک‌اند) ارسال می‌شوند؛ اگر سرور در ایران است، ElevenLabs جواب نمی‌دهد. کلید را ذخیره کنید و از VPN/سرور خارج برای اجرای بک‌اند استفاده کنید، یا از TTSهای دیگر (OpenAI/OpenRouter) استفاده کنید.'
+            : 'کلید برای API شناخته نشد یا دسترسی محدود است. از elevenlabs.io/app/settings/api-keys یک API key جدید بسازید (نه OAuth)، در Scope دسترسی «Text to Speech» را فعال کنید، و کلید را بدون فاصلهٔ اضافه کپی کنید.';
           return { ok: false, message: msg, responsePreview };
         }
         return { ok: false, message: `HTTP ${res.status}: ${rawBody.slice(0, 200)}`, responsePreview };

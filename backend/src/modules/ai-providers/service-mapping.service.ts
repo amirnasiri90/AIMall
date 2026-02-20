@@ -22,6 +22,11 @@ const DEFAULT_MAPPING: ServiceMappingPayload = {
   image: [
     { providerKey: 'openrouter', modelId: 'flux', label: 'Flux' },
   ],
+  video: [
+    { providerKey: 'veo', modelId: 'veo', label: 'Google Veo' },
+    { providerKey: 'luma', modelId: 'luma', label: 'Luma Dream Machine' },
+    { providerKey: 'nanobenana', modelId: 'nanobenana', label: 'NanoBenana' },
+  ],
   tts: [
     { providerKey: 'openrouter', modelId: 'openai/gpt-audio-mini', label: 'GPT Audio Mini (OpenRouter)' },
     { providerKey: 'openai', modelId: 'openai/tts-1', label: 'OpenAI TTS' },

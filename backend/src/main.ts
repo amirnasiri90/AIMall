@@ -1,4 +1,11 @@
-import './tracing';
+require('dotenv').config({ path: require('path').resolve(process.cwd(), '.env') });
+
+// OpenTelemetry: اگر dist/tracing.js وجود داشت لود می‌شود (برای production می‌توان با node -r dist/tracing.js اجرا کرد)
+try {
+  require('./tracing');
+} catch {
+  // tracing در build فعلی Nest ممکن است خروجی نداشته باشد؛ اختیاری است
+}
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';

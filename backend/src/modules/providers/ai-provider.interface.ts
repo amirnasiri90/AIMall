@@ -28,6 +28,10 @@ export const MODEL_COSTS: Record<string, number> = {
   'openai/whisper-1': 2,
   'google/speech-to-text': 2,
   'deepgram/nova-2': 2,
+  // Video
+  veo: 15,
+  luma: 12,
+  nanobenana: 10,
 };
 
 export function getModelCost(model: string): number {

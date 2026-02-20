@@ -41,6 +41,7 @@ import {
   Dumbbell,
   MapPin,
   FileOutput,
+  Video,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -122,6 +123,7 @@ const INTENT_ICON_MAP: Record<string, React.ComponentType<{ className?: string }
   '/text-studio': FileText,
   '/image-studio': ImageIcon,
   '/audio-studio': Mic,
+  '/video-studio': Video,
   '/agents': Bot,
   '/agents/student-tutor': GraduationCap,
   '/agents/fitness-diet': Dumbbell,
@@ -226,7 +228,7 @@ export default function DashboardHomePage() {
   ];
 
   const quickActions = useMemo(() => {
-    const mainHrefs = ['/chat', '/text-studio', '/image-studio', '/audio-studio', '/agents', '/knowledge', '/workflows'];
+    const mainHrefs = ['/chat', '/text-studio', '/image-studio', '/audio-studio', '/video-studio', '/agents', '/knowledge', '/workflows'];
     return INTENT_TARGETS.filter(
       (a) =>
         mainHrefs.includes(a.href) &&

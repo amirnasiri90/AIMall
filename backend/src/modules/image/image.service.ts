@@ -18,6 +18,9 @@ export const IMAGE_MODEL_COSTS: Record<string, number> = {
   turbo: 3,
   'dall-e-3': 8,
   'dall-e-2': 4,
+  'gpt-4o-mini': 6,
+  'gpt-4.1-mini': 6,
+  'gpt-4.1': 10,
 };
 
 export function getImageModelCost(model?: string): number {
@@ -199,7 +202,8 @@ export class ImageService {
       }
     }
 
-    if (resolved?.providerKey === 'openai' && resolved.apiKey && (resolved.modelId === 'dall-e-3' || resolved.modelId === 'dall-e-2')) {
+    const openaiImageModels = ['dall-e-3', 'dall-e-2', 'gpt-4o-mini', 'gpt-4.1-mini', 'gpt-4.1'];
+    if (resolved?.providerKey === 'openai' && resolved.apiKey && openaiImageModels.includes(resolved.modelId)) {
       const urls = await this.openAIImages.generate(resolved.apiKey, enhancedPrompt, { w, h, model: resolved.modelId, n });
       for (let i = 0; i < urls.length; i++) {
         await this.usersService.deductCoins(userId, perCost, 'تولید تصویر', 'image');

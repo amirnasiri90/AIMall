@@ -274,6 +274,22 @@ export const api = {
     const qs = sp.toString();
     return request<any[]>(`/images/history${qs ? `?${qs}` : ''}`);
   },
+  getVideoModels: () => request<{ id: string; name: string; description?: string; coinCost?: number }[]>('/video/models'),
+  estimateVideo: (model?: string, durationSeconds?: number) =>
+    request<{ estimatedCoins: number }>('/video/estimate', {
+      method: 'POST',
+      body: JSON.stringify({ model: model || undefined, durationSeconds }),
+    }),
+  generateVideo: (data: {
+    prompt: string;
+    model?: string;
+    duration?: number;
+    aspectRatio?: string;
+  }) =>
+    request<{ videoUrl?: string; message: string; jobId?: string }>('/video/generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   estimateAudio: (type: 'tts' | 'stt', model?: string) =>
     request<{ estimatedCoins: number }>('/audio/estimate', { method: 'POST', body: JSON.stringify({ type, model }) }),
   getAudioHistory: (params?: { search?: string; from?: string; to?: string; type?: string }) => {

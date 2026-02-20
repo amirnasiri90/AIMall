@@ -178,6 +178,9 @@ const MODELS_BY_SECTION_AND_PROVIDER: Record<string, Record<string, { id: string
     openai: [
       { id: 'dall-e-3', label: 'DALL-E 3' },
       { id: 'dall-e-2', label: 'DALL-E 2' },
+      { id: 'gpt-4o-mini', label: 'GPT-4o mini' },
+      { id: 'gpt-4.1-mini', label: 'GPT-4.1 mini' },
+      { id: 'gpt-4.1', label: 'GPT-4.1' },
     ],
     flux: [{ id: 'flux', label: 'Flux' }],
     xai: [{ id: 'grok-image', label: 'Grok Image' }],

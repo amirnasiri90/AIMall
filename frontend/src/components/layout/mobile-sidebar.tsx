@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { X, LayoutDashboard, MessageSquare, FileText, ImageIcon, Mic, CreditCard, Settings, Shield, Building2, Bot, Code2, LifeBuoy, Coins, User } from 'lucide-react';
+import { X, LayoutDashboard, MessageSquare, FileText, ImageIcon, Mic, Video, CreditCard, Settings, Shield, Building2, Bot, Code2, LifeBuoy, Coins, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLogoUrl } from '@/lib/use-branding';
 import { useAuthStore } from '@/lib/store';
@@ -16,6 +16,7 @@ const navItems = [
   { href: '/text-studio', label: 'استودیو متن', icon: FileText },
   { href: '/image-studio', label: 'استودیو تصویر', icon: ImageIcon },
   { href: '/audio-studio', label: 'استودیو صوت', icon: Mic },
+  { href: '/video-studio', label: 'استودیو ویدئو', icon: Video },
   { href: '/agents', label: 'دستیارها', icon: Bot },
   { href: '/billing', label: 'صورتحساب', icon: CreditCard },
   { href: '/organizations', label: 'سازمان‌ها', icon: Building2 },
