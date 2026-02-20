@@ -259,7 +259,17 @@ export class AiProviderConfigService {
           if (data !== null && typeof data === 'object') return { ok: true, responsePreview };
           return { ok: false, message: 'پاسخ نامعتبر از API', responsePreview };
         }
-        if (res.status === 401) return { ok: false, message: 'API key نامعتبر است. کلید را بدون فاصلهٔ اضافه کپی کنید و از elevenlabs.io/app/settings/api-keys یک کلید با دسترسی «Text to Speech» بسازید.', responsePreview };
+        if (res.status === 401) {
+          const missingVoicesRead = modelsRes.ok && (rawBody.includes('voices_read') || rawBody.includes('missing_permissions'));
+          if (missingVoicesRead) {
+            return {
+              ok: true,
+              message: 'کلید معتبر است (/v1/models موفق). این کلید به لیست صداها (voices_read) دسترسی ندارد؛ در صورت نیاز در ElevenLabs برای این کلید دسترسی «Voices» را فعال کنید. تولید متن به صوت (TTS) با همین کلید باید کار کند.',
+              responsePreview,
+            };
+          }
+          return { ok: false, message: 'API key نامعتبر است. کلید را بدون فاصلهٔ اضافه کپی کنید و از elevenlabs.io/app/settings/api-keys یک کلید با دسترسی «Text to Speech» بسازید.', responsePreview };
+        }
         if (res.status === 429) return { ok: false, message: 'محدودیت درخواست (۴۲۹). سهمیه ElevenLabs را بررسی کنید.', responsePreview };
         if (res.status === 403) {
           const modelsOk = modelsRes.ok;
