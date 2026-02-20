@@ -12,3 +12,5 @@ backend/data/
 # فایل‌های env واقعی را در گیت commit نکنید؛ فقط .env.example
 backend/.env
 frontend/.env.local
+# تولیدشده هنگام بیلد؛ روی سرور نباید با گیت conflict بخورد
+frontend/public/release.json
