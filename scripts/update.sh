@@ -17,11 +17,18 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 
 [ -d .git ] || { log_warn "پوشهٔ .git یافت نشد؛ احتمالاً کلون نشده. به‌روزرسانی رد شد."; exit 0; }
 
-# فایل تولیدشده را حذف کن تا git pull با حذف آن در ریپو conflict نگیرد
+# فایل تولیدشده را حذف و حذف را stage کن تا git pull با حذف آن در ریپو conflict نگیرد
 rm -f "$PROJECT_ROOT/frontend/public/release.json"
+(cd "$PROJECT_ROOT" && git add frontend/public/release.json 2>/dev/null || true)
 
 log_info "دریافت آخرین تغییرات از Git..."
-git pull --rebase || git pull || true
+git fetch origin
+if ! git pull --rebase origin main 2>/dev/null; then
+  if ! git pull origin main 2>/dev/null; then
+    log_warn "pull به‌خاطر release.json ناموفق بود؛ یک‌بار با reset سخت هم‌خوان می‌کنیم..."
+    git reset --hard origin/main
+  fi
+fi
 
 log_info "نصب وابستگی‌های Backend..."
 (cd "$PROJECT_ROOT/backend" && npm ci --no-audit --no-fund)
