@@ -112,6 +112,14 @@ export default function AudioStudioPage() {
   const [sfxLoading, setSfxLoading] = useState(false);
   const [sfxResult, setSfxResult] = useState<{ audioUrl?: string; coinCost?: number } | null>(null);
 
+  const { data: ttsModels } = useQuery({ queryKey: ['models', 'tts'], queryFn: () => api.getModels('tts') });
+  const { data: sttModels } = useQuery({ queryKey: ['models', 'stt'], queryFn: () => api.getModels('stt') });
+  const { data: ttsOptions } = useQuery({
+    queryKey: ['audio', 'tts-options'],
+    queryFn: () => api.getAudioTtsOptions(),
+    staleTime: 60_000,
+  });
+
   useEffect(() => {
     if (!AUDIO_STUDIO_ENABLED) setShowComingSoonModal(true);
   }, []);
@@ -123,14 +131,6 @@ export default function AudioStudioPage() {
       setTtsVoice((v) => (TTS_VOICES_OPENAI.some((x) => x.value === v) ? v : 'alloy'));
     }
   }, [ttsModel, ttsOptions?.voices]);
-
-  const { data: ttsModels } = useQuery({ queryKey: ['models', 'tts'], queryFn: () => api.getModels('tts') });
-  const { data: sttModels } = useQuery({ queryKey: ['models', 'stt'], queryFn: () => api.getModels('stt') });
-  const { data: ttsOptions } = useQuery({
-    queryKey: ['audio', 'tts-options'],
-    queryFn: () => api.getAudioTtsOptions(),
-    staleTime: 60_000,
-  });
 
   const ttsModelsMerged = useMemo(() => {
     const base = (ttsModels as { id: string; name: string; coinCost?: number }[]) || [];
