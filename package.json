@@ -1,0 +1,12 @@
+{
+  "name": "aimall",
+  "private": true,
+  "description": "AIMall monorepo — از روت فقط اسکریپت‌ها؛ برای بیلد به frontend یا backend بروید.",
+  "scripts": {
+    "build": "cd frontend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "release:show": "cat frontend/public/release.json 2>/dev/null || echo '{\"releaseId\":\"?\"}'",
+    "postinstall": "echo 'وابستگی‌ها را در frontend و backend نصب کنید: cd frontend && npm ci; cd ../backend && npm ci'"
+  }
+}
