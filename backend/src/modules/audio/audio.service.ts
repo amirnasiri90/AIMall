@@ -150,16 +150,35 @@ export class AudioService {
     return { voices, elevenlabsModels, voicesForPersian: AudioService.VOICES_FOR_PERSIAN };
   }
 
-  /** تولید افکت صوتی از متن (ElevenLabs Sound Effects). هزینه ثابت ۵ سکه. */
+  /** تولید افکت صوتی یا موسیقی از متن. نوع: sound_effect (افکت) یا music (موسیقی با مدل Eleven Music). */
   async createSoundEffect(
     userId: string,
     text: string,
-    options?: { durationSeconds?: number; promptInfluence?: number; loop?: boolean },
+    options?: {
+      durationSeconds?: number;
+      promptInfluence?: number;
+      loop?: boolean;
+      type?: 'sound_effect' | 'music';
+      musicLengthMs?: number;
+      forceInstrumental?: boolean;
+    },
   ): Promise<{ audioUrl: string; coinCost: number }> {
-    const coinCost = 5;
-    await this.usersService.deductCoins(userId, coinCost, 'افکت صوتی', 'audio');
+    const type = options?.type ?? 'sound_effect';
+    const isMusic = type === 'music';
+
+    const coinCost = isMusic ? 10 : 5;
+    await this.usersService.deductCoins(userId, coinCost, isMusic ? 'موسیقی' : 'افکت صوتی', 'audio');
     const apiKey = await this.aiProviderConfig.getApiKeyForProvider('elevenlabs');
     if (!apiKey?.trim()) throw new Error('کلید ElevenLabs در پنل مدیریت تنظیم نشده است.');
+
+    if (isMusic) {
+      return this.createMusic(userId, text.trim() || 'calm ambient music', apiKey.trim(), {
+        musicLengthMs: options?.musicLengthMs,
+        forceInstrumental: options?.forceInstrumental,
+        coinCost,
+      });
+    }
+
     const body: Record<string, unknown> = {
       text: text.trim() || 'کلیک نرم',
       model_id: 'eleven_text_to_sound_v2',
@@ -198,6 +217,52 @@ export class AudioService {
       },
     });
     return { audioUrl, coinCost };
+  }
+
+  /** تولید موسیقی با ElevenLabs Music API (مدل music_v1). پرامپت به‌صورت متن ساده؛ خروجی موسیقی است نه خوانش متن. */
+  private async createMusic(
+    userId: string,
+    prompt: string,
+    apiKey: string,
+    opts: { musicLengthMs?: number; forceInstrumental?: boolean; coinCost: number },
+  ): Promise<{ audioUrl: string; coinCost: number }> {
+    const musicLengthMs = Math.min(
+      600000,
+      Math.max(3000, opts.musicLengthMs ?? 30000),
+    );
+    const body: Record<string, unknown> = {
+      prompt,
+      model_id: 'music_v1',
+      music_length_ms: musicLengthMs,
+      force_instrumental: opts.forceInstrumental ?? false,
+    };
+    const res = await fetch('https://api.elevenlabs.io/v1/music/stream?output_format=mp3_44100_128', {
+      method: 'POST',
+      headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      this.logger.warn(`ElevenLabs music/stream: ${res.status} ${err.slice(0, 300)}`);
+      if (res.status === 401) throw new Error('API key ElevenLabs نامعتبر است.');
+      if (res.status === 429) throw new Error('محدودیت درخواست ElevenLabs.');
+      throw new Error(`تولید موسیقی: خطای ${res.status}. ${err.slice(0, 150)}`);
+    }
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const base64 = buffer.toString('base64');
+    const audioUrl = `data:audio/mpeg;base64,${base64}`;
+    await this.prisma.generation.create({
+      data: {
+        userId,
+        service: 'audio',
+        input: prompt,
+        output: audioUrl,
+        model: 'music_v1',
+        coinCost: opts.coinCost,
+        metadata: JSON.stringify({ type: 'music', musicLengthMs, forceInstrumental: opts.forceInstrumental }),
+      },
+    });
+    return { audioUrl, coinCost: opts.coinCost };
   }
 
   async getHistory(

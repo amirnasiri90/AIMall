@@ -77,12 +77,23 @@ export class AudioController {
   @Post('sound-effect')
   createSoundEffect(
     @CurrentUser() user: any,
-    @Body() body: { text: string; durationSeconds?: number; promptInfluence?: number; loop?: boolean },
+    @Body() body: {
+      text: string;
+      durationSeconds?: number;
+      promptInfluence?: number;
+      loop?: boolean;
+      type?: 'sound_effect' | 'music';
+      musicLengthMs?: number;
+      forceInstrumental?: boolean;
+    },
   ) {
     return this.audioService.createSoundEffect(user.id, body.text, {
       durationSeconds: body.durationSeconds,
       promptInfluence: body.promptInfluence,
       loop: body.loop,
+      type: body.type,
+      musicLengthMs: body.musicLengthMs,
+      forceInstrumental: body.forceInstrumental,
     });
   }
 

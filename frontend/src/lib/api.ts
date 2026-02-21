@@ -305,7 +305,15 @@ export const api = {
   },
   getAudioTtsOptions: () =>
     request<{ voices: { id: string; name: string; nameFa: string }[]; elevenlabsModels: { id: string; name: string; coinCost: number }[] }>('/audio/tts-options'),
-  createSoundEffect: (data: { text: string; durationSeconds?: number; promptInfluence?: number; loop?: boolean }) =>
+  createSoundEffect: (data: {
+    text: string;
+    durationSeconds?: number;
+    promptInfluence?: number;
+    loop?: boolean;
+    type?: 'sound_effect' | 'music';
+    musicLengthMs?: number;
+    forceInstrumental?: boolean;
+  }) =>
     request<{ audioUrl: string; coinCost: number }>('/audio/sound-effect', { method: 'POST', body: JSON.stringify(data) }),
   textToSpeech: (data: {
     text: string;

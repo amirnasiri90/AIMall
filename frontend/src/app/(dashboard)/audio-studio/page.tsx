@@ -68,14 +68,23 @@ const TTS_QUICK_PROMPTS = [
   { text: 'Welcome to the audio studio.', label: 'English' },
 ];
 
-/** پیشنهادهای افکت صوتی / موسیقی */
+/** پیشنهادهای موسیقی (مدل Eleven Music — توصیف سبک/حال‌وهوا) */
+const MUSIC_PRESETS = [
+  { text: 'Calm ambient background music, no vocals, soft pads and gentle piano', label: 'آرام' },
+  { text: 'Upbeat cinematic trailer music, epic and dramatic', label: 'سینمایی' },
+  { text: 'Lo-fi hip hop beat, relaxed, for studying', label: 'لوفای' },
+  { text: 'Acoustic guitar, folk style, peaceful', label: 'گیتار آرام' },
+  { text: 'Electronic synth, retro 80s style', label: 'الکترونیک' },
+  { text: 'Piano solo, emotional and slow', label: 'پیانو' },
+];
+/** پیشنهادهای افکت صوتی (مدل Sound Effects — توصیف صدای افکت، نه جمله) */
 const SFX_PRESETS = [
-  { text: 'صدای باران آرام در شب', label: 'باران' },
-  { text: 'موسیقی پس‌زمینه آرام و امبینت', label: 'موسیقی آرام' },
-  { text: 'کلیک نرم دکمه', label: 'کلیک' },
-  { text: 'صدای باد در جنگل', label: 'باد' },
-  { text: 'موسیقی کوتاه اکشن برای ویدیو', label: 'اکشن' },
-  { text: 'صدای امواج دریا', label: 'دریا' },
+  { text: 'Soft button click', label: 'کلیک' },
+  { text: 'Rain falling gently on window', label: 'باران' },
+  { text: 'Ocean waves on beach', label: 'دریا' },
+  { text: 'Wind through forest leaves', label: 'باد' },
+  { text: 'Fire crackling in fireplace', label: 'آتش' },
+  { text: 'Notification ping', label: 'اعلان' },
 ];
 
 /** سکه هر مدل TTS (هماهنگ با بک‌اند) — بدون درخواست API تا از 404 جلوگیری شود */
@@ -130,9 +139,12 @@ export default function AudioStudioPage() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [showComingSoonModal, setShowComingSoonModal] = useState(false);
   const [sfxText, setSfxText] = useState('');
+  const [sfxType, setSfxType] = useState<'sound_effect' | 'music'>('music');
   const [sfxDuration, setSfxDuration] = useState(8);
+  const [sfxMusicLengthSec, setSfxMusicLengthSec] = useState(30);
   const [sfxPromptInfluence, setSfxPromptInfluence] = useState(0.5);
   const [sfxLoop, setSfxLoop] = useState(false);
+  const [sfxForceInstrumental, setSfxForceInstrumental] = useState(true);
   const [sfxLoading, setSfxLoading] = useState(false);
   const [sfxResult, setSfxResult] = useState<{ audioUrl?: string; coinCost?: number } | null>(null);
   const [sfxError, setSfxError] = useState<string | null>(null);
@@ -276,19 +288,24 @@ export default function AudioStudioPage() {
     setSfxLoading(true);
     setSfxResult(null);
     setSfxError(null);
+    const isMusic = sfxType === 'music';
+    const defaultPrompt = isMusic ? 'calm ambient background music, no vocals' : 'کلیک نرم';
     try {
       const data = await api.createSoundEffect({
-        text: sfxText.trim() || 'کلیک نرم',
-        durationSeconds: sfxDuration,
-        promptInfluence: sfxPromptInfluence,
-        loop: sfxLoop,
+        text: sfxText.trim() || defaultPrompt,
+        type: sfxType,
+        durationSeconds: isMusic ? undefined : sfxDuration,
+        promptInfluence: isMusic ? undefined : sfxPromptInfluence,
+        loop: isMusic ? false : sfxLoop,
+        musicLengthMs: isMusic ? sfxMusicLengthSec * 1000 : undefined,
+        forceInstrumental: isMusic ? sfxForceInstrumental : undefined,
       });
       setSfxResult(data);
       setHistoryList((prev) => [
-        { id: `sfx-${Date.now()}`, type: 'tts', input: sfxText || 'افکت صوتی', output: data.audioUrl, model: 'sound_effect', coinCost: data.coinCost, createdAt: new Date().toISOString() },
+        { id: `sfx-${Date.now()}`, type: 'tts', input: sfxText || (isMusic ? 'موسیقی' : 'افکت صوتی'), output: data.audioUrl, model: isMusic ? 'music_v1' : 'sound_effect', coinCost: data.coinCost, createdAt: new Date().toISOString() },
         ...prev,
       ]);
-      toast.success(`افکت صوتی ساخته شد (${data.coinCost ?? 0} سکه)`);
+      toast.success(isMusic ? `موسیقی ساخته شد (${data.coinCost ?? 0} سکه)` : `افکت صوتی ساخته شد (${data.coinCost ?? 0} سکه)`);
     } catch (err: any) {
       const msg = err?.message || 'خطا در ساخت افکت صوتی';
       setSfxError(msg);
@@ -706,17 +723,36 @@ export default function AudioStudioPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>توضیح افکت یا موسیقی</Label>
+                  <Label>نوع خروجی</Label>
+                  <Select value={sfxType} onValueChange={(v) => { setSfxType(v as 'sound_effect' | 'music'); setSfxError(null); }}>
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="music">
+                        <span className="flex items-center gap-2">
+                          <Music2 className="h-4 w-4" />
+                          موسیقی (مدل Eleven Music)
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="sound_effect">افکت صوتی (صدای کلیک، باران، و…)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>
+                    {sfxType === 'music' ? 'توصیف سبک موسیقی (انگلیسی بهتر است)' : 'توصیف افکت صوتی (مثلاً کلیک نرم، باران)'}
+                  </Label>
                   <Textarea
                     value={sfxText}
                     onChange={(e) => { setSfxText(e.target.value); setSfxError(null); }}
-                    placeholder="مثال: صدای باران آرام، موسیقی پس‌زمینه فیلم، کلیک دکمه..."
+                    placeholder={sfxType === 'music' ? 'e.g. Calm ambient music, no vocals' : 'e.g. Soft button click'}
                     rows={3}
                     className="rounded-xl min-h-[80px]"
                   />
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {SFX_PRESETS.map((p) => (
+                  {(sfxType === 'music' ? MUSIC_PRESETS : SFX_PRESETS).map((p) => (
                     <Button
                       key={p.label}
                       type="button"
@@ -729,46 +765,71 @@ export default function AudioStudioPage() {
                     </Button>
                   ))}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs">مدت (ثانیه): {sfxDuration}</Label>
-                    <input
-                      type="range"
-                      min={5}
-                      max={30}
-                      step={1}
-                      value={sfxDuration}
-                      onChange={(e) => setSfxDuration(Number(e.target.value))}
-                      className="w-full h-2 rounded-lg accent-primary"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">تأثیر پرامپت: {Math.round(sfxPromptInfluence * 100)}٪</Label>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.1}
-                      value={sfxPromptInfluence}
-                      onChange={(e) => setSfxPromptInfluence(Number(e.target.value))}
-                      className="w-full h-2 rounded-lg accent-primary"
-                    />
-                  </div>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer text-sm">
-                  <input type="checkbox" checked={sfxLoop} onChange={(e) => setSfxLoop(e.target.checked)} className="rounded" />
-                  حلقه (لوپ) برای پس‌زمینه
-                </label>
+                {sfxType === 'music' ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-xs">مدت موسیقی (ثانیه)</Label>
+                      <Select value={String(sfxMusicLengthSec)} onValueChange={(v) => setSfxMusicLengthSec(Number(v))}>
+                        <SelectTrigger className="rounded-xl">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">۱۰ ثانیه</SelectItem>
+                          <SelectItem value="20">۲۰ ثانیه</SelectItem>
+                          <SelectItem value="30">۳۰ ثانیه</SelectItem>
+                          <SelectItem value="60">۱ دقیقه</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                      <input type="checkbox" checked={sfxForceInstrumental} onChange={(e) => setSfxForceInstrumental(e.target.checked)} className="rounded" />
+                      فقط سازی (بدون آواز)
+                    </label>
+                  </>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs">مدت (ثانیه): {sfxDuration}</Label>
+                        <input
+                          type="range"
+                          min={5}
+                          max={30}
+                          step={1}
+                          value={sfxDuration}
+                          onChange={(e) => setSfxDuration(Number(e.target.value))}
+                          className="w-full h-2 rounded-lg accent-primary"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">تأثیر پرامپت: {Math.round(sfxPromptInfluence * 100)}٪</Label>
+                        <input
+                          type="range"
+                          min={0}
+                          max={1}
+                          step={0.1}
+                          value={sfxPromptInfluence}
+                          onChange={(e) => setSfxPromptInfluence(Number(e.target.value))}
+                          className="w-full h-2 rounded-lg accent-primary"
+                        />
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                      <input type="checkbox" checked={sfxLoop} onChange={(e) => setSfxLoop(e.target.checked)} className="rounded" />
+                      حلقه (لوپ) برای پس‌زمینه
+                    </label>
+                  </>
+                )}
                 {sfxError && (
                   <p className="text-sm text-destructive rounded-lg bg-destructive/10 p-2">{sfxError}</p>
                 )}
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Coins className="h-4 w-4" />
-                  <span>۵ سکه برای هر افکت</span>
+                  <span>{sfxType === 'music' ? '۱۰ سکه برای هر موسیقی' : '۵ سکه برای هر افکت'}</span>
                 </div>
                 <Button onClick={handleSfx} disabled={sfxLoading} className="w-full rounded-xl">
                   {sfxLoading ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Music2 className="me-2 h-4 w-4" />}
-                  ساخت افکت / موسیقی
+                  {sfxType === 'music' ? 'ساخت موسیقی' : 'ساخت افکت صوتی'}
                 </Button>
               </CardContent>
             </Card>
