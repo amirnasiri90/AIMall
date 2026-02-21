@@ -15,10 +15,14 @@ export class ElevenLabsTtsProvider implements IAudioProvider {
     if (!apiKey) throw new Error('ElevenLabs API key not set (پنل مدیریت → ارائه‌دهندگان)');
     const voiceId = voice && /^[a-zA-Z0-9_-]{20,}$/.test(voice) ? voice : DEFAULT_VOICE_ID;
     const modelId = model || DEFAULT_MODEL_ID;
+    const stability = options?.stability != null && options.stability >= 0 && options.stability <= 1 ? options.stability : 0.5;
+    const similarityBoost = options?.similarityBoost != null && options.similarityBoost >= 0 && options.similarityBoost <= 1 ? options.similarityBoost : 0.75;
     const body: Record<string, unknown> = { text, model_id: modelId };
-    if (options?.speed != null && options.speed >= 0.5 && options.speed <= 2) {
-      body.voice_settings = { stability: 0.5, similarity_boost: 0.75, speed: options.speed };
-    }
+    body.voice_settings = {
+      stability,
+      similarity_boost: similarityBoost,
+      ...(options?.speed != null && options.speed >= 0.5 && options.speed <= 2 && { speed: options.speed }),
+    };
     const url = `${ELEVENLABS_TTS_URL}/${voiceId}?output_format=mp3_44100_128`;
     const res = await fetch(url, {
       method: 'POST',

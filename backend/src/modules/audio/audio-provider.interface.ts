@@ -12,6 +12,12 @@ export interface SttResult {
 export interface TtsOptions {
   speed?: number;
   language?: string;
+  /** لحن خوانش: formal | friendly | narrative | neutral */
+  style?: string;
+  /** ElevenLabs: 0–1 */
+  stability?: number;
+  /** ElevenLabs: 0–1 */
+  similarityBoost?: number;
   /** Override API key (from admin provider config). */
   apiKey?: string;
 }

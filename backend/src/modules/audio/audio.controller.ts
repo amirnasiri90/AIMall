@@ -49,6 +49,9 @@ export class AudioController {
       return await this.audioService.textToSpeech(user.id, body.text, body.voice, body.model, {
         speed: body.speed,
         language: body.language,
+        style: body.style,
+        stability: body.stability,
+        similarityBoost: body.similarityBoost,
       });
     } catch (err: any) {
       if (err instanceof HttpException) throw err;

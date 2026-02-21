@@ -34,14 +34,22 @@ import { useEffect } from 'react';
 /** وقتی true شود، استودیو صوت فعال است. */
 const AUDIO_STUDIO_ENABLED = true;
 
-/** صداهای OpenAI با برچسب فارسی */
+/** صداهای OpenAI با برچسب فارسی (فارسی را نسبتاً بهتر پشتیبانی می‌کنند: nova, shimmer, alloy) */
 const TTS_VOICES_OPENAI = [
-  { value: 'alloy', label: 'Alloy', labelFa: 'آلی' },
-  { value: 'echo', label: 'Echo', labelFa: 'اکو' },
-  { value: 'fable', label: 'Fable', labelFa: 'فِیبل' },
-  { value: 'onyx', label: 'Onyx', labelFa: 'اونیکس' },
-  { value: 'nova', label: 'Nova', labelFa: 'نووا' },
-  { value: 'shimmer', label: 'Shimmer', labelFa: 'شیمر' },
+  { value: 'nova', label: 'Nova', labelFa: 'نووا', forPersian: true },
+  { value: 'shimmer', label: 'Shimmer', labelFa: 'شیمر', forPersian: true },
+  { value: 'alloy', label: 'Alloy', labelFa: 'آلی', forPersian: true },
+  { value: 'echo', label: 'Echo', labelFa: 'اکو', forPersian: false },
+  { value: 'fable', label: 'Fable', labelFa: 'فِیبل', forPersian: false },
+  { value: 'onyx', label: 'Onyx', labelFa: 'اونیکس', forPersian: false },
+];
+
+/** لحن خوانش */
+const TTS_STYLES = [
+  { value: 'neutral', label: 'خنثی' },
+  { value: 'formal', label: 'رسمی' },
+  { value: 'friendly', label: 'دوستانه' },
+  { value: 'narrative', label: 'روایی' },
 ];
 
 const TTS_SPEEDS = [
@@ -58,6 +66,16 @@ const TTS_QUICK_PROMPTS = [
   { text: 'خوش آمدید به استودیو صوت.', label: 'خوش‌آمدگویی' },
   { text: 'امروز هوا خوب است.', label: 'جمله کوتاه' },
   { text: 'Welcome to the audio studio.', label: 'English' },
+];
+
+/** پیشنهادهای افکت صوتی / موسیقی */
+const SFX_PRESETS = [
+  { text: 'صدای باران آرام در شب', label: 'باران' },
+  { text: 'موسیقی پس‌زمینه آرام و امبینت', label: 'موسیقی آرام' },
+  { text: 'کلیک نرم دکمه', label: 'کلیک' },
+  { text: 'صدای باد در جنگل', label: 'باد' },
+  { text: 'موسیقی کوتاه اکشن برای ویدیو', label: 'اکشن' },
+  { text: 'صدای امواج دریا', label: 'دریا' },
 ];
 
 /** سکه هر مدل TTS (هماهنگ با بک‌اند) — بدون درخواست API تا از 404 جلوگیری شود */
@@ -95,6 +113,9 @@ export default function AudioStudioPage() {
   const [ttsModel, setTtsModel] = useState('openai/gpt-audio-mini');
   const [ttsVoice, setTtsVoice] = useState('alloy');
   const [ttsSpeed, setTtsSpeed] = useState(1);
+  const [ttsStyle, setTtsStyle] = useState('neutral');
+  const [ttsStability, setTtsStability] = useState(0.5);
+  const [ttsSimilarityBoost, setTtsSimilarityBoost] = useState(0.75);
   const [ttsLoading, setTtsLoading] = useState(false);
   const [ttsResult, setTtsResult] = useState<{ audioUrl?: string; duration?: number; model?: string; coinCost?: number } | null>(null);
   const [sttFile, setSttFile] = useState<File | null>(null);
@@ -109,8 +130,12 @@ export default function AudioStudioPage() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [showComingSoonModal, setShowComingSoonModal] = useState(false);
   const [sfxText, setSfxText] = useState('');
+  const [sfxDuration, setSfxDuration] = useState(8);
+  const [sfxPromptInfluence, setSfxPromptInfluence] = useState(0.5);
+  const [sfxLoop, setSfxLoop] = useState(false);
   const [sfxLoading, setSfxLoading] = useState(false);
   const [sfxResult, setSfxResult] = useState<{ audioUrl?: string; coinCost?: number } | null>(null);
+  const [sfxError, setSfxError] = useState<string | null>(null);
 
   const { data: ttsModels } = useQuery({ queryKey: ['models', 'tts'], queryFn: () => api.getModels('tts') });
   const { data: sttModels } = useQuery({ queryKey: ['models', 'stt'], queryFn: () => api.getModels('stt') });
@@ -151,11 +176,13 @@ export default function AudioStudioPage() {
   const ttsVoicesList = useMemo(() => {
     if (ttsModel.startsWith('elevenlabs/')) {
       const list = ttsOptions?.voices?.length
-        ? ttsOptions.voices.map((v) => ({ value: v.id, label: v.nameFa || v.name, labelFa: v.nameFa }))
-        : [{ value: '21m00Tcm4TlvDq8ikWAM', label: 'راشل', labelFa: 'راشل' }];
+        ? [...ttsOptions.voices]
+            .sort((a, b) => ((b as any).forPersian ? 1 : 0) - ((a as any).forPersian ? 1 : 0))
+            .map((v) => ({ value: v.id, label: v.nameFa || v.name, labelFa: v.nameFa, forPersian: (v as any).forPersian }))
+        : [{ value: '21m00Tcm4TlvDq8ikWAM', label: 'راشل (مناسب فارسی)', labelFa: 'راشل', forPersian: true }];
       return list;
     }
-    return TTS_VOICES_OPENAI.map((v) => ({ value: v.value, label: v.labelFa || v.label, labelFa: v.labelFa }));
+    return TTS_VOICES_OPENAI.map((v) => ({ value: v.value, label: v.labelFa || v.label, labelFa: v.labelFa, forPersian: v.forPersian }));
   }, [ttsModel, ttsOptions?.voices]);
 
   const ttsCost = TTS_COINS[ttsModel] ?? (ttsModel.startsWith('elevenlabs/') ? 5 : DEFAULT_TTS_COINS);
@@ -185,6 +212,9 @@ export default function AudioStudioPage() {
         model: ttsModel,
         voice: ttsVoice,
         speed: ttsSpeed,
+        style: ttsStyle !== 'neutral' ? ttsStyle : undefined,
+        stability: ttsModel.startsWith('elevenlabs/') ? ttsStability : undefined,
+        similarityBoost: ttsModel.startsWith('elevenlabs/') ? ttsSimilarityBoost : undefined,
       });
       setTtsResult(data);
       setHistoryList((prev) => [
@@ -245,8 +275,14 @@ export default function AudioStudioPage() {
   const handleSfx = async () => {
     setSfxLoading(true);
     setSfxResult(null);
+    setSfxError(null);
     try {
-      const data = await api.createSoundEffect({ text: sfxText.trim() || 'کلیک نرم' });
+      const data = await api.createSoundEffect({
+        text: sfxText.trim() || 'کلیک نرم',
+        durationSeconds: sfxDuration,
+        promptInfluence: sfxPromptInfluence,
+        loop: sfxLoop,
+      });
       setSfxResult(data);
       setHistoryList((prev) => [
         { id: `sfx-${Date.now()}`, type: 'tts', input: sfxText || 'افکت صوتی', output: data.audioUrl, model: 'sound_effect', coinCost: data.coinCost, createdAt: new Date().toISOString() },
@@ -254,7 +290,9 @@ export default function AudioStudioPage() {
       ]);
       toast.success(`افکت صوتی ساخته شد (${data.coinCost ?? 0} سکه)`);
     } catch (err: any) {
-      toast.error(err.message);
+      const msg = err?.message || 'خطا در ساخت افکت صوتی';
+      setSfxError(msg);
+      toast.error(msg);
     } finally {
       setSfxLoading(false);
     }
@@ -322,21 +360,21 @@ export default function AudioStudioPage() {
         </>
       )}
 
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-1 sm:px-0">
       <div>
-        <h1 className="text-3xl font-bold">استودیو صوت</h1>
-        <p className="text-muted-foreground mt-1">تبدیل متن به گفتار و بالعکس</p>
+        <h1 className="text-2xl sm:text-3xl font-bold">استودیو صوت</h1>
+        <p className="text-muted-foreground mt-1 text-sm sm:text-base">تبدیل متن به گفتار و بالعکس</p>
       </div>
 
       <Tabs defaultValue="tts" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="tts">تبدیل متن به گفتار</TabsTrigger>
-          <TabsTrigger value="stt">تبدیل گفتار به متن</TabsTrigger>
-          <TabsTrigger value="sfx">افکت صوتی / موسیقی</TabsTrigger>
+        <TabsList className="flex w-full flex-wrap sm:grid sm:grid-cols-3 gap-1 h-auto p-1 overflow-x-auto max-w-full">
+          <TabsTrigger value="tts" className="text-xs sm:text-sm rounded-xl py-2">متن به گفتار</TabsTrigger>
+          <TabsTrigger value="stt" className="text-xs sm:text-sm rounded-xl py-2">گفتار به متن</TabsTrigger>
+          <TabsTrigger value="sfx" className="text-xs sm:text-sm rounded-xl py-2">افکت / موسیقی</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="tts" className="mt-6">
-          <div className="grid gap-6 lg:grid-cols-2">
+        <TabsContent value="tts" className="mt-4 sm:mt-6">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
             <Card className="rounded-2xl border-border/80 bg-card/50 overflow-hidden">
               <CardHeader>
                 <CardTitle>ورودی</CardTitle>
@@ -375,9 +413,12 @@ export default function AudioStudioPage() {
                       <SelectContent>
                         {ttsModelsMerged.map((m) => (
                           <SelectItem key={m.id} value={m.id}>
-                            <span className="flex items-center gap-2">
-                              <Volume2 className="h-4 w-4 text-muted-foreground" />
+                            <span className="flex items-center gap-2 flex-wrap">
+                              <Volume2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                               {m.name}
+                              {m.id.startsWith('elevenlabs/') && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">مناسب فارسی</Badge>
+                              )}
                               <span className="text-amber-600 dark:text-amber-400 text-xs">({m.coinCost ?? 3} سکه)</span>
                             </span>
                           </SelectItem>
@@ -394,28 +435,78 @@ export default function AudioStudioPage() {
                       <SelectContent>
                         {ttsVoicesList.map((v) => (
                           <SelectItem key={v.value} value={v.value}>
-                            {v.label}
+                            <span className="flex items-center gap-2">
+                              {v.label}
+                              {(v as any).forPersian && (
+                                <Badge variant="outline" className="text-[10px] px-1 py-0 border-green-500/50 text-green-600 dark:text-green-400">فارسی</Badge>
+                              )}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>سرعت</Label>
-                  <Select value={String(ttsSpeed)} onValueChange={(v) => setTtsSpeed(Number(v))}>
-                    <SelectTrigger className="rounded-xl">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TTS_SPEEDS.map((s) => (
-                        <SelectItem key={String(s.value)} value={String(s.value)}>
-                          {s.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>لحن خوانش</Label>
+                    <Select value={ttsStyle} onValueChange={setTtsStyle}>
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TTS_STYLES.map((s) => (
+                          <SelectItem key={s.value} value={s.value}>
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>سرعت</Label>
+                    <Select value={String(ttsSpeed)} onValueChange={(v) => setTtsSpeed(Number(v))}>
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TTS_SPEEDS.map((s) => (
+                          <SelectItem key={String(s.value)} value={String(s.value)}>
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+                {ttsModel.startsWith('elevenlabs/') && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/60">
+                    <div className="space-y-2">
+                      <Label className="text-xs">پایداری صدا (۰–۱): {ttsStability.toFixed(1)}</Label>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={ttsStability}
+                        onChange={(e) => setTtsStability(Number(e.target.value))}
+                        className="w-full h-2 rounded-lg accent-primary"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">شباهت به صدا (۰–۱): {ttsSimilarityBoost.toFixed(1)}</Label>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={ttsSimilarityBoost}
+                        onChange={(e) => setTtsSimilarityBoost(Number(e.target.value))}
+                        className="w-full h-2 rounded-lg accent-primary"
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Coins className="h-4 w-4" />
                   <span>تخمین: {ttsCost} سکه</span>
@@ -484,8 +575,8 @@ export default function AudioStudioPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="stt" className="mt-6">
-          <div className="grid gap-6 lg:grid-cols-2">
+        <TabsContent value="stt" className="mt-4 sm:mt-6">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
             <Card className="rounded-2xl border-border/80 bg-card/50 overflow-hidden">
               <CardHeader>
                 <CardTitle>آپلود صوت</CardTitle>
@@ -603,31 +694,81 @@ export default function AudioStudioPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="sfx" className="mt-6">
-          <div className="grid gap-6 lg:grid-cols-2">
+        <TabsContent value="sfx" className="mt-4 sm:mt-6">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
             <Card className="rounded-2xl border-border/80 bg-card/50 overflow-hidden">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Music2 className="h-5 w-5" />
+              <CardHeader className="pb-2 sm:pb-4">
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                  <Music2 className="h-5 w-5 flex-shrink-0" />
                   افکت صوتی / موسیقی
                 </CardTitle>
-                <CardDescription>با ElevenLabs از توضیح متنی، افکت یا صدای پس‌زمینه بسازید (فارسی یا انگلیسی)</CardDescription>
+                <CardDescription className="text-xs sm:text-sm">با ElevenLabs از توضیح متنی، افکت یا موسیقی بسازید (فارسی یا انگلیسی)</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Textarea
-                  value={sfxText}
-                  onChange={(e) => setSfxText(e.target.value)}
-                  placeholder="مثال: صدای باران آرام، موسیقی پس‌زمینه فیلم، کلیک دکمه..."
-                  rows={4}
-                  className="rounded-xl"
-                />
+                <div className="space-y-2">
+                  <Label>توضیح افکت یا موسیقی</Label>
+                  <Textarea
+                    value={sfxText}
+                    onChange={(e) => { setSfxText(e.target.value); setSfxError(null); }}
+                    placeholder="مثال: صدای باران آرام، موسیقی پس‌زمینه فیلم، کلیک دکمه..."
+                    rows={3}
+                    className="rounded-xl min-h-[80px]"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {SFX_PRESETS.map((p) => (
+                    <Button
+                      key={p.label}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl text-xs"
+                      onClick={() => { setSfxText(p.text); setSfxError(null); }}
+                    >
+                      {p.label}
+                    </Button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs">مدت (ثانیه): {sfxDuration}</Label>
+                    <input
+                      type="range"
+                      min={5}
+                      max={30}
+                      step={1}
+                      value={sfxDuration}
+                      onChange={(e) => setSfxDuration(Number(e.target.value))}
+                      className="w-full h-2 rounded-lg accent-primary"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">تأثیر پرامپت: {Math.round(sfxPromptInfluence * 100)}٪</Label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.1}
+                      value={sfxPromptInfluence}
+                      onChange={(e) => setSfxPromptInfluence(Number(e.target.value))}
+                      className="w-full h-2 rounded-lg accent-primary"
+                    />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                  <input type="checkbox" checked={sfxLoop} onChange={(e) => setSfxLoop(e.target.checked)} className="rounded" />
+                  حلقه (لوپ) برای پس‌زمینه
+                </label>
+                {sfxError && (
+                  <p className="text-sm text-destructive rounded-lg bg-destructive/10 p-2">{sfxError}</p>
+                )}
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Coins className="h-4 w-4" />
                   <span>۵ سکه برای هر افکت</span>
                 </div>
                 <Button onClick={handleSfx} disabled={sfxLoading} className="w-full rounded-xl">
                   {sfxLoading ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Music2 className="me-2 h-4 w-4" />}
-                  ساخت افکت صوتی
+                  ساخت افکت / موسیقی
                 </Button>
               </CardContent>
             </Card>
@@ -673,26 +814,26 @@ export default function AudioStudioPage() {
 
       {/* تاریخچه */}
       <Card className="rounded-2xl border-border/80 bg-card/50 overflow-hidden">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <History className="h-5 w-5" />
+        <CardHeader className="pb-2 sm:pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+            <History className="h-5 w-5 flex-shrink-0" />
             تاریخچه صوت
           </CardTitle>
-          <CardDescription>جستجو و فیلتر بر اساس نوع و تاریخ</CardDescription>
+          <CardDescription className="text-xs sm:text-sm">جستجو و فیلتر بر اساس نوع و تاریخ</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-wrap gap-2 items-stretch">
+            <div className="relative flex-1 min-w-0 w-full sm:min-w-[180px] sm:w-auto">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="جستجو..."
                 value={historySearch}
                 onChange={(e) => setHistorySearch(e.target.value)}
-                className="rounded-xl pe-9"
+                className="rounded-xl pe-9 w-full"
               />
             </div>
             <Select value={historyType} onValueChange={setHistoryType}>
-              <SelectTrigger className="w-[160px] rounded-xl">
+              <SelectTrigger className="w-full sm:w-[160px] rounded-xl">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -702,7 +843,7 @@ export default function AudioStudioPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="grid gap-2 max-h-[320px] overflow-y-auto">
+          <div className="grid gap-2 max-h-[280px] sm:max-h-[320px] overflow-y-auto">
             {history?.length ? (
               history.map((item: any) => (
                 <button

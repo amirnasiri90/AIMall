@@ -75,15 +75,29 @@ export class AudioService {
     return { estimatedCoins: cost };
   }
 
+  /** صداهای ElevenLabs که برای فارسی مناسب‌اند (multilingual یا تست‌شده) */
+  private static readonly VOICES_FOR_PERSIAN: string[] = [
+    '21m00Tcm4TlvDq8ikWAM', // Rachel
+    'EXAVITQu4vr4xnSDxMaL', // Bella
+    'ZQe5CZNOzWyzPSCn5a3c', // Sarah
+    'Zlb1dXrM653N07WRdFW3', // Emily
+    'MF3mGyEYCl7XYWbV9V6O', // Elli
+    'pNInz6obpgDQGcFmaJgB', // Adam
+    'ErXwobaYiN019PkySvjV', // Antoni
+    'TxGEqnHWrfWFTfGW9XjX', // Josh
+  ];
+
   /** گزینه‌های TTS برای فرانت: صداها و مدل‌های ElevenLabs (در صورت وجود کلید) */
   async getTtsOptions(): Promise<{
-    voices: { id: string; name: string; nameFa: string }[];
+    voices: { id: string; name: string; nameFa: string; forPersian?: boolean }[];
     elevenlabsModels: { id: string; name: string; coinCost: number }[];
+    voicesForPersian: string[];
   }> {
     const apiKey = await this.aiProviderConfig.getApiKeyForProvider('elevenlabs');
     const defaultResult = {
-      voices: [] as { id: string; name: string; nameFa: string }[],
+      voices: [] as { id: string; name: string; nameFa: string; forPersian?: boolean }[],
       elevenlabsModels: [] as { id: string; name: string; coinCost: number }[],
+      voicesForPersian: AudioService.VOICES_FOR_PERSIAN,
     };
     if (!apiKey?.trim()) return defaultResult;
 
@@ -119,15 +133,21 @@ export class AudioService {
           const id = v?.voice_id ?? v?.id ?? '';
           const name = typeof v?.name === 'string' ? v.name : id;
           const nameFa = AudioService.ELEVENLABS_VOICE_NAMES_FA[id] ?? name;
-          return { id, name, nameFa };
+          const forPersian = AudioService.VOICES_FOR_PERSIAN.includes(id);
+          return { id, name, nameFa, forPersian };
         });
       }
     } catch (e) {
       this.logger.warn(`ElevenLabs getTtsOptions voices: ${e instanceof Error ? e.message : String(e)}`);
     }
-    if (voices.length === 0) voices = [...AudioService.ELEVENLABS_DEFAULT_VOICES];
+    if (voices.length === 0) {
+      voices = AudioService.ELEVENLABS_DEFAULT_VOICES.map((v) => ({
+        ...v,
+        forPersian: AudioService.VOICES_FOR_PERSIAN.includes(v.id),
+      }));
+    }
 
-    return { voices, elevenlabsModels };
+    return { voices, elevenlabsModels, voicesForPersian: AudioService.VOICES_FOR_PERSIAN };
   }
 
   /** تولید افکت صوتی از متن (ElevenLabs Sound Effects). هزینه ثابت ۵ سکه. */
@@ -233,7 +253,7 @@ export class AudioService {
     text: string,
     voice?: string,
     model?: string,
-    options?: { speed?: number; language?: string },
+    options?: { speed?: number; language?: string; style?: string; stability?: number; similarityBoost?: number },
   ) {
     const coinCost = getTtsModelCost(model);
     await this.usersService.deductCoins(userId, coinCost, 'تبدیل متن به گفتار', 'audio');
