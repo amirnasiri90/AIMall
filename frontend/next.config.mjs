@@ -3,6 +3,10 @@ const nextConfig = {
   images: {
     remotePatterns: [{ protocol: 'https', hostname: 'picsum.photos' }],
   },
+  // حد مجاز حجم بدنهٔ درخواست هنگام پروکسی به بک‌اند (برای ویرایش تصویر با base64)
+  experimental: {
+    proxyClientMaxBodySize: '50mb',
+  },
   // پروکسی API تا از گوشی/سیستم دیگر فقط به همین سرور (پورت 3000) وصل شوید — خطای Load failed برطرف می‌شود
   async rewrites() {
     const apiPort = process.env.NEXT_PUBLIC_BACKEND_PORT || '3001';

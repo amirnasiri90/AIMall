@@ -10,6 +10,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { warnIfProductionSecretsMissing } from './common/config/secrets';
 
@@ -22,6 +23,9 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3001;
   const app = await NestFactory.create(AppModule);
+  // حد مجاز بدنهٔ JSON برای ویرایش تصویر (base64) و سایر درخواست‌های بزرگ
+  app.use(json({ limit: '50mb' }));
+  app.use(urlencoded({ extended: true, limit: '50mb' }));
   if (FRONTEND_URL) {
     app.use((req: any, res: any, next: any) => {
       const path = req.url?.split('?')[0] || '';

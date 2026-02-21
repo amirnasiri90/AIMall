@@ -116,7 +116,13 @@ export default function AudioStudioPage() {
   const { data: sttModels } = useQuery({ queryKey: ['models', 'stt'], queryFn: () => api.getModels('stt') });
   const { data: ttsOptions } = useQuery({
     queryKey: ['audio', 'tts-options'],
-    queryFn: () => api.getAudioTtsOptions(),
+    queryFn: async () => {
+      try {
+        return await api.getAudioTtsOptions();
+      } catch {
+        return { voices: [] as { id: string; name: string; nameFa: string }[], elevenlabsModels: [] as { id: string; name: string; coinCost: number }[] };
+      }
+    },
     staleTime: 60_000,
   });
 

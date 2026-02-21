@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -15,6 +15,9 @@ import {
   Search,
   RotateCcw,
   Clock,
+  Upload,
+  Pencil,
+  ImagePlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -22,8 +25,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { formatDate } from '@/lib/utils';
@@ -71,6 +76,15 @@ const QUICK_PROMPTS = [
   'لوگوی مینیمال برای کافه',
 ];
 
+const EDIT_PRESETS = [
+  { value: 'general', label: 'عمومی (طبق پرامپت)' },
+  { value: 'remove_bg', label: 'حذف پس‌زمینه' },
+  { value: 'separate_subject', label: 'جدا کردن سوژه' },
+  { value: 'make_3d', label: 'سه‌بعدی کردن' },
+  { value: 'enhance', label: 'بهبود کیفیت' },
+  { value: 'style_transfer', label: 'تغییر سبک هنری' },
+];
+
 export default function ImageStudioPage() {
   const { currentOrganizationId } = useAuthStore();
   const [prompt, setPrompt] = useState('');
@@ -87,11 +101,26 @@ export default function ImageStudioPage() {
   const [result, setResult] = useState<any>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
   const [historyStyle, setHistoryStyle] = useState('_all');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [mainTab, setMainTab] = useState<'generate' | 'edit'>('generate');
+  const [editMode, setEditMode] = useState<'upload' | 'history'>('upload');
+  const [editImageUrl, setEditImageUrl] = useState<string | null>(null);
+  const [editPrompt, setEditPrompt] = useState('');
+  const [editType, setEditType] = useState('general');
+  const [editRatio, setEditRatio] = useState('1:1');
+  const [editModel, setEditModel] = useState('flux');
+  const [editLoading, setEditLoading] = useState(false);
+  const [editResult, setEditResult] = useState<{ imageUrl: string; coinCost: number } | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editProgress, setEditProgress] = useState(0);
+  const [editResultImageError, setEditResultImageError] = useState(false);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+  const editProgressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { data: models } = useQuery({ queryKey: ['models', 'image'], queryFn: () => api.getModels('image') });
   const { data: templates } = useQuery({ queryKey: ['image-templates'], queryFn: api.getImageTemplates });
@@ -121,6 +150,7 @@ export default function ImageStudioPage() {
       if (!p.trim()) return;
       setLoading(true);
       setResult(null);
+      setGenerateError(null);
       setImageLoaded(false);
       setImageError(false);
       setSelectedIndex(0);
@@ -139,10 +169,13 @@ export default function ImageStudioPage() {
           organizationId: currentOrganizationId,
         });
         setResult(data);
+        setGenerateError(null);
         toast.success(`تصویر تولید شد (${data.coinCost} سکه)`);
         refetch();
       } catch (err: any) {
-        toast.error(err?.message || 'خطا در تولید تصویر');
+        const msg = err?.message || 'خطا در تولید تصویر';
+        setGenerateError(msg);
+        toast.error(msg);
       } finally {
         setLoading(false);
       }
@@ -169,6 +202,71 @@ export default function ImageStudioPage() {
 
   const cost = estimatedCoins?.estimatedCoins ?? result?.coinCost ?? 5;
 
+  const handleEditFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => setEditImageUrl(reader.result as string);
+    reader.readAsDataURL(file);
+    setEditResult(null);
+    setEditError(null);
+  }, []);
+
+  const runEdit = useCallback(async () => {
+    if (!editImageUrl?.trim()) return;
+    setEditLoading(true);
+    setEditResult(null);
+    setEditError(null);
+    setEditResultImageError(false);
+    setEditProgress(0);
+    // شبیه‌سازی پیشرفت: ۰ → ۹۰ در حدود ۲۵ ثانیه
+    editProgressIntervalRef.current = setInterval(() => {
+      setEditProgress((p) => (p >= 90 ? 90 : p + 1.8));
+    }, 500);
+    try {
+      const data = await api.editImage({
+        image: editImageUrl,
+        prompt: editPrompt,
+        editType: editType !== 'general' ? editType : undefined,
+        ratio: editRatio,
+        model: editModel,
+      });
+      if (editProgressIntervalRef.current) {
+        clearInterval(editProgressIntervalRef.current);
+        editProgressIntervalRef.current = null;
+      }
+      setEditProgress(100);
+      const imageUrl = (data as any)?.imageUrl ?? (data as any)?.data?.imageUrl;
+      const coinCost = (data as any)?.coinCost ?? (data as any)?.data?.coinCost ?? 6;
+      if (imageUrl) {
+        setEditResult({ imageUrl, coinCost });
+        toast.success(`ویرایش انجام شد (${coinCost} سکه)`);
+      }
+      refetch();
+    } catch (err: any) {
+      if (editProgressIntervalRef.current) {
+        clearInterval(editProgressIntervalRef.current);
+        editProgressIntervalRef.current = null;
+      }
+      setEditProgress(0);
+      const msg = err?.message || 'خطا در ویرایش تصویر';
+      setEditError(msg);
+      toast.error(msg);
+      const fresh = await refetch();
+      const list = fresh?.data ?? history ?? [];
+      const latest = Array.isArray(list) && list.length > 0 ? list[0] : null;
+      if (latest?.output && latest?.createdAt) {
+        const created = new Date(latest.createdAt).getTime();
+        if (Date.now() - created < 120_000) {
+          setEditResult({ imageUrl: latest.output, coinCost: latest.coinCost ?? 6 });
+        }
+      }
+    } finally {
+      setEditLoading(false);
+      setTimeout(() => setEditProgress(0), 800);
+    }
+  }, [editImageUrl, editPrompt, editType, editRatio, editModel, refetch, history]);
+
   return (
     <div className="space-y-6" dir="rtl">
       <div>
@@ -176,6 +274,19 @@ export default function ImageStudioPage() {
         <p className="text-muted-foreground mt-1">تصاویر خلاقانه با هوش مصنوعی بسازید</p>
       </div>
 
+      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'generate' | 'edit')} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="generate" className="rounded-xl">
+            <Sparkles className="w-4 h-4 me-2" />
+            تولید تصویر
+          </TabsTrigger>
+          <TabsTrigger value="edit" className="rounded-xl">
+            <Pencil className="w-4 h-4 me-2" />
+            ویرایش تصویر
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="generate" className="mt-6 space-y-6">
       {/* Templates */}
       {templates && templates.length > 0 && (
         <div className="space-y-2">
@@ -395,6 +506,11 @@ export default function ImageStudioPage() {
                 {loading ? 'در حال تولید...' : `تولید (${cost} سکه)`}
               </Button>
             </div>
+            {generateError && (
+              <p className="text-sm text-destructive mt-2 rounded-lg bg-destructive/10 p-3 border border-destructive/20">
+                {generateError}
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -647,6 +763,324 @@ export default function ImageStudioPage() {
           )}
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="edit" className="mt-6 space-y-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card className="border border-border/80 bg-card/50 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Pencil className="h-5 w-5" />
+                  ویرایش تصویر
+                </CardTitle>
+                <CardDescription>عکس را آپلود کنید یا از گالری انتخاب کنید، سپس تغییرات را با پرامپت و گزینه‌ها اعمال کنید</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={editMode === 'upload' ? 'default' : 'outline'}
+                    size="sm"
+                    className="rounded-xl"
+                    onClick={() => { setEditMode('upload'); setEditImageUrl(null); setEditResult(null); setEditError(null); }}
+                  >
+                    <Upload className="w-4 h-4 me-1" />
+                    آپلود عکس
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={editMode === 'history' ? 'default' : 'outline'}
+                    size="sm"
+                    className="rounded-xl"
+                    onClick={() => { setEditMode('history'); setEditImageUrl(null); setEditResult(null); setEditError(null); }}
+                  >
+                    <ImagePlus className="w-4 h-4 me-1" />
+                    از تاریخچه
+                  </Button>
+                </div>
+
+                {editMode === 'upload' && (
+                  <>
+                    <input
+                      ref={editFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleEditFile}
+                    />
+                    <div
+                      className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                      onClick={() => editFileInputRef.current?.click()}
+                    >
+                      {editImageUrl ? (
+                        <img src={editImageUrl} alt="پیش‌نمایش" className="max-h-48 mx-auto rounded-lg object-contain" />
+                      ) : (
+                        <>
+                          <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">کلیک کنید یا عکس را بکشید</p>
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {editMode === 'history' && (
+                  <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                    {history?.slice(0, 12).map((item: any) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`rounded-lg overflow-hidden border-2 transition-all ${
+                          editImageUrl === item.output ? 'border-primary ring-2 ring-primary/30' : 'border-transparent hover:border-muted'
+                        }`}
+                        onClick={() => { setEditImageUrl(item.output); setEditResult(null); setEditError(null); }}
+                      >
+                        <img src={item.output} alt="" className="w-full aspect-square object-cover" />
+                      </button>
+                    ))}
+                    {(!history || history.length === 0) && (
+                      <p className="col-span-3 text-sm text-muted-foreground py-4">تصویری در تاریخچه نیست</p>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label>مدل ویرایش تصویر</Label>
+                  <Select value={editModel} onValueChange={setEditModel}>
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue placeholder="انتخاب مدل" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(models && models.length > 0 ? models : [{ id: 'flux', name: 'Flux Pro' }]).map((m: { id: string; name: string }) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>پرامپت ویرایش</Label>
+                  <Textarea
+                    value={editPrompt}
+                    onChange={(e) => setEditPrompt(e.target.value)}
+                    placeholder="مثلاً: پس‌زمینه را آبی کن، یا سوژه را برجسته‌تر نشان بده..."
+                    rows={3}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>نوع ویرایش</Label>
+                  <Select value={editType} onValueChange={setEditType}>
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EDIT_PRESETS.map((p) => (
+                        <SelectItem key={p.value} value={p.value}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>نسبت خروجی</Label>
+                  <Select value={editRatio} onValueChange={setEditRatio}>
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(ratios && ratios.length > 0 ? ratios : DEFAULT_RATIOS).map((r: { value: string; label: string }) => (
+                        <SelectItem key={r.value} value={r.value}>
+                          {r.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Coins className="w-4 h-4" />
+                  ۶ سکه برای هر ویرایش
+                </p>
+                {editLoading && (
+                  <div className="space-y-3 rounded-xl bg-muted/40 p-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
+                      <span>در حال ویرایش تصویر…</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">زمان تقریبی: ۲۰ تا ۴۰ ثانیه</p>
+                    <Progress value={editProgress} className="h-2" />
+                  </div>
+                )}
+                {editError && (
+                  <p className="text-sm text-destructive rounded-lg bg-destructive/10 p-2">{editError}</p>
+                )}
+                <Button
+                  onClick={runEdit}
+                  disabled={editLoading || !editImageUrl}
+                  className="w-full rounded-xl"
+                >
+                  {editLoading ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <Pencil className="w-4 h-4 me-2" />}
+                  {editLoading ? 'در حال ویرایش...' : 'اعمال ویرایش'}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-border/80 bg-card/50 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle>نتیجه ویرایش</CardTitle>
+                <CardDescription>تصویر ویرایش‌شده اینجا نمایش داده می‌شود</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {editLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                    <Loader2 className="h-12 w-12 animate-spin mb-3" />
+                    <p className="text-sm">در حال پردازش…</p>
+                    <p className="text-xs mt-1">حدود ۲۰ تا ۴۰ ثانیه</p>
+                  </div>
+                ) : editResult?.imageUrl ? (
+                  <div className="space-y-4">
+                    {!editResultImageError ? (
+                      <img
+                        src={editResult.imageUrl}
+                        alt="نتیجه"
+                        className="w-full rounded-xl border border-border/80 max-h-[400px] object-contain"
+                        onLoad={() => setEditResultImageError(false)}
+                        onError={() => setEditResultImageError(true)}
+                      />
+                    ) : (
+                      <div className="rounded-xl border border-border/80 bg-muted/30 max-h-[400px] min-h-[200px] flex flex-col items-center justify-center gap-2 p-6 text-muted-foreground text-sm">
+                        <ImageIcon className="h-12 w-12 opacity-50" />
+                        <p>پیش‌نمایش در دسترس نیست. تصویر ذخیره شده است.</p>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl"
+                        onClick={() => {
+                          const a = document.createElement('a');
+                          a.href = editResult.imageUrl;
+                          a.download = `aimall-edit-${Date.now()}.png`;
+                          a.click();
+                        }}
+                      >
+                        <Download className="w-4 h-4 me-1" />
+                        دانلود
+                      </Button>
+                      <Badge variant="secondary">{editResult.coinCost} سکه</Badge>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <Pencil className="h-16 w-16 opacity-20 mb-4" />
+                    <p>تصویر ویرایش‌شده اینجا نمایش داده می‌شود</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* گالری در تب ویرایش */}
+          <div className="space-y-4 mt-8">
+            <h2 className="text-xl font-semibold">گالری</h2>
+            <div className="flex flex-wrap gap-2">
+              <div className="relative flex-1 min-w-[180px]">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={historySearch}
+                  onChange={(e) => setHistorySearch(e.target.value)}
+                  placeholder="جستجو در توضیح یا پرامپت..."
+                  className="rounded-xl pe-10"
+                />
+              </div>
+              <Input
+                type="date"
+                value={historyFrom}
+                onChange={(e) => setHistoryFrom(e.target.value)}
+                className="rounded-xl w-40"
+              />
+              <Input
+                type="date"
+                value={historyTo}
+                onChange={(e) => setHistoryTo(e.target.value)}
+                className="rounded-xl w-40"
+              />
+              <Select value={historyStyle} onValueChange={setHistoryStyle}>
+                <SelectTrigger className="rounded-xl w-36">
+                  <SelectValue placeholder="سبک" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">همه سبک‌ها</SelectItem>
+                  {STYLES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {history && history.length > 0 ? (
+                history.map((item: any) => (
+                  <Card
+                    key={item.id}
+                    className="overflow-hidden group cursor-pointer hover:shadow-lg transition-all rounded-2xl border border-border/80 bg-card/50"
+                    onClick={() => {
+                      setEditImageUrl(item.output);
+                      setEditResult(null);
+                      setEditError(null);
+                    }}
+                  >
+                    <div className="relative aspect-square bg-muted/40">
+                      <img
+                        src={item.output}
+                        alt={item.input}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          if (target.parentElement)
+                            target.parentElement.innerHTML =
+                              '<div class="flex items-center justify-center h-full text-muted-foreground text-xs">تصویر در دسترس نیست</div>';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-end">
+                        <div className="w-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <a
+                            href={item.output}
+                            download={`aimall-${formatDate(item.createdAt).replace(/\s/g, '-')}.png`}
+                            target="_blank"
+                            rel="noopener"
+                            className="flex items-center justify-center gap-1 bg-white/90 text-black rounded px-2 py-1 text-xs"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Download className="w-3 h-3" /> دانلود
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                    <CardContent className="p-3">
+                      <p className="text-xs truncate">{item.input}</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-[10px] text-muted-foreground">{formatDate(item.createdAt)}</p>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          {item.coinCost} سکه
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <p className="text-muted-foreground col-span-full text-center py-8">هنوز تصویری در گالری نیست</p>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

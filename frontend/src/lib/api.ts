@@ -274,6 +274,8 @@ export const api = {
     const qs = sp.toString();
     return request<any[]>(`/images/history${qs ? `?${qs}` : ''}`);
   },
+  editImage: (data: { image: string; prompt: string; editType?: string; ratio?: string; model?: string }) =>
+    request<{ imageUrl: string; coinCost: number }>('/images/edit', { method: 'POST', body: JSON.stringify(data) }),
   getVideoModels: () => request<{ id: string; name: string; description?: string; coinCost?: number }[]>('/video/models'),
   estimateVideo: (model?: string, durationSeconds?: number) =>
     request<{ estimatedCoins: number }>('/video/estimate', {

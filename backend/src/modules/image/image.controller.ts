@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, UseGuards, BadRequestException, HttpException } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ImageService } from './image.service';
 import { JobsService } from '../jobs/jobs.service';
@@ -33,23 +33,51 @@ export class ImageController {
     return this.imageService.estimate(body?.model, body?.count);
   }
 
+  @Post('edit')
+  async editImage(
+    @CurrentUser() user: any,
+    @Body() body: { image: string; prompt: string; editType?: string; ratio?: string; model?: string },
+  ) {
+    if (!body?.image?.trim()) throw new BadRequestException('تصویر ارسال نشده.');
+    try {
+      return await this.imageService.editImage(
+        user.id,
+        body.image.trim(),
+        body.prompt?.trim() ?? '',
+        body.editType,
+        body.ratio,
+        body.model,
+      );
+    } catch (e) {
+      if (e instanceof HttpException) throw e;
+      const message = e instanceof Error ? e.message : 'خطا در ویرایش تصویر';
+      throw new BadRequestException(message);
+    }
+  }
+
   @Post('generate')
-  generate(@CurrentUser() user: any, @Body() body: GenerateImageDto & { organizationId?: string | null }) {
-    return this.imageService.generate(
-      user.id,
-      body.prompt,
-      body.style,
-      body.size,
-      body.model || undefined,
-      body.templateId,
-      body.ratio,
-      body.sizeTier,
-      body.count,
-      body.styleGuide,
-      body.negativePrompt,
-      body.tag,
-      body.organizationId,
-    );
+  async generate(@CurrentUser() user: any, @Body() body: GenerateImageDto & { organizationId?: string | null }) {
+    try {
+      return await this.imageService.generate(
+        user.id,
+        body.prompt,
+        body.style,
+        body.size,
+        body.model || undefined,
+        body.templateId,
+        body.ratio,
+        body.sizeTier,
+        body.count,
+        body.styleGuide,
+        body.negativePrompt,
+        body.tag,
+        body.organizationId,
+      );
+    } catch (e) {
+      if (e instanceof HttpException) throw e;
+      const message = e instanceof Error ? e.message : 'خطا در تولید تصویر';
+      throw new BadRequestException(message);
+    }
   }
 
   @Post('generate/async')
