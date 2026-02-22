@@ -276,14 +276,14 @@ export default function ImageStudioPage() {
   }, [editImageUrl, editPrompt, editType, editRatio, editModel, refetch, history]);
 
   return (
-    <div className="space-y-6 text-right" dir="rtl">
+    <div className="space-y-6 text-right w-full max-w-6xl ms-auto" dir="rtl">
       <div>
         <h1 className="text-3xl font-bold">استودیو تصویر</h1>
         <p className="text-muted-foreground mt-1">تصاویر خلاقانه با هوش مصنوعی بسازید</p>
       </div>
 
       <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'generate' | 'edit')} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-2 max-w-md me-0 ms-auto">
           <TabsTrigger value="generate" className="rounded-xl">
             <Sparkles className="w-4 h-4 me-2" />
             تولید تصویر
@@ -315,13 +315,13 @@ export default function ImageStudioPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2" style={{ direction: 'rtl' }}>
         <Card className="border border-border/80 bg-card/50 backdrop-blur-sm">
-          <CardHeader>
+          <CardHeader className="text-right">
             <CardTitle>ورودی</CardTitle>
             <CardDescription>دقیق توصیف کن؛ بازیگوش یا حرفه‌ای — هر دو جواب می‌دهیم</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 text-right">
             <div className="space-y-2">
               <Label>توضیح تصویر</Label>
               <Textarea
@@ -500,7 +500,7 @@ export default function ImageStudioPage() {
               حدود ۱۵ تا ۴۵ ثانیه
             </p>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-row-reverse">
               <Button
                 onClick={() => generate()}
                 disabled={loading || !prompt.trim()}
@@ -523,13 +523,13 @@ export default function ImageStudioPage() {
         </Card>
 
         <Card className="border border-border/80 bg-card/50 backdrop-blur-sm">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+          <CardHeader className="flex flex-row-reverse items-center justify-between gap-2 flex-wrap text-right">
             <div>
               <CardTitle>خروجی</CardTitle>
               <CardDescription>تصویر تولیدشده و پرامپت بهینه</CardDescription>
             </div>
             {result && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-row-reverse">
                 <Button
                   variant="outline"
                   size="sm"
@@ -564,11 +564,11 @@ export default function ImageStudioPage() {
               </div>
             )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="text-right">
             {loading ? (
               <div className="space-y-4">
                 <Skeleton className="h-64 w-full rounded-xl" />
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground flex-row-reverse">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>حدود ۱۵ تا ۴۵ ثانیه...</span>
                 </div>
@@ -577,7 +577,7 @@ export default function ImageStudioPage() {
               <div className="space-y-4">
                 {result.imageUrls && result.imageUrls.length > 1 ? (
                   <>
-                    <div className="flex gap-2 overflow-x-auto pb-2">
+                    <div className="flex gap-2 overflow-x-auto pb-2 flex-row-reverse">
                       {result.imageUrls.map((url: string, i: number) => (
                         <button
                           key={i}
@@ -661,7 +661,7 @@ export default function ImageStudioPage() {
                   </div>
                 )}
 
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap flex-row-reverse">
                   <Badge variant="secondary">{result.coinCost} سکه</Badge>
                   <Badge variant="outline" className="text-[10px]">
                     {result.model}
@@ -685,9 +685,9 @@ export default function ImageStudioPage() {
       </div>
 
       {/* Gallery */}
-      <div className="space-y-4">
+      <div className="space-y-4 w-full">
         <h2 className="text-xl font-semibold mb-4">گالری</h2>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 justify-end">
           <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -723,7 +723,7 @@ export default function ImageStudioPage() {
                 </SelectContent>
               </Select>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" style={{ direction: 'rtl' }}>
           {history && history.length > 0 ? (
             history.map((item: any) => (
               <Card
@@ -789,18 +789,18 @@ export default function ImageStudioPage() {
       </div>
         </TabsContent>
 
-        <TabsContent value="edit" className="mt-6 space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
+        <TabsContent value="edit" className="mt-6 space-y-6 text-right" dir="rtl">
+          <div className="grid gap-6 lg:grid-cols-2" style={{ direction: 'rtl' }}>
             <Card className="border border-border/80 bg-card/50 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+              <CardHeader className="text-right">
+                <CardTitle className="flex items-center gap-2 flex-row-reverse">
                   <Pencil className="h-5 w-5" />
                   ویرایش تصویر
                 </CardTitle>
                 <CardDescription>عکس را آپلود کنید یا از گالری انتخاب کنید، سپس تغییرات را با پرامپت و گزینه‌ها اعمال کنید</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
+              <CardContent className="space-y-4 text-right">
+                <div className="flex gap-2 flex-row-reverse">
                   <Button
                     type="button"
                     variant={editMode === 'upload' ? 'default' : 'outline'}
@@ -1046,7 +1046,7 @@ export default function ImageStudioPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" style={{ direction: 'rtl' }}>
               {history && history.length > 0 ? (
                 history.map((item: any) => (
                   <Card
