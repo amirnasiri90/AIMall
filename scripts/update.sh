@@ -30,10 +30,25 @@ if ! git pull --rebase origin main 2>/dev/null; then
   fi
 fi
 
+# روی سرورهای کم‌حافظه (مثلاً ۱GB RAM) ممکن است npm ci با Killed (OOM) تمام شود.
+# اول npm ci را امتحان می‌کنیم؛ اگر خروجی 137/134 بود با npm install دوباره تلاش می‌کنیم.
+npm_install() {
+  local dir="$1"
+  local name="$2"
+  (cd "$dir" && npm ci --no-audit --no-fund) || true
+  local ret=$?
+  if [ "$ret" -eq 0 ]; then return 0; fi
+  if [ "$ret" -eq 137 ] || [ "$ret" -eq 134 ] || [ "$ret" -eq 130 ]; then
+    log_warn "نصب $name با npm ci قطع شد (احتمالاً کمبود RAM). تلاش با npm install..."
+    (cd "$dir" && npm install --no-audit --no-fund) && return 0
+  fi
+  return $ret
+}
+
 log_info "نصب وابستگی‌های Backend..."
-(cd "$PROJECT_ROOT/backend" && npm ci --no-audit --no-fund)
+npm_install "$PROJECT_ROOT/backend" "Backend" || { log_warn "نصب Backend ناموفق."; exit 1; }
 log_info "نصب وابستگی‌های Frontend..."
-(cd "$PROJECT_ROOT/frontend" && npm ci --no-audit --no-fund)
+npm_install "$PROJECT_ROOT/frontend" "Frontend" || { log_warn "نصب Frontend ناموفق."; exit 1; }
 
 log_info "Prisma generate و migrate..."
 (cd "$PROJECT_ROOT/backend" && npx prisma generate)

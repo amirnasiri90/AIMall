@@ -99,6 +99,31 @@ curl http://localhost:3001/api/v1/health
 
 ## عیب‌یابی
 
+### اگر npm ci با «Killed» تمام شد (کمبود RAM)
+
+روی سرورهای کم‌حافظه (مثلاً ۱GB) ممکن است `npm ci` توسط سیستم با **Killed** قطع شود. اسکریپت `update.sh` در این حالت خودش با `npm install` دوباره تلاش می‌کند. اگر باز هم خطا دیدید:
+
+1. **اضافه کردن Swap (پیشنهادی)**  
+   برای کاهش احتمال OOM این دستورات را یک‌بار اجرا کنید:
+   ```bash
+   sudo fallocate -l 2G /swapfile
+   sudo chmod 600 /swapfile
+   sudo mkswap /swapfile
+   sudo swapon /swapfile
+   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+   ```
+   بعد از آن دوباره `./scripts/update.sh` را اجرا کنید.
+
+2. **آپدیت دستی با npm install**  
+   به‌جای `npm ci` از `npm install` استفاده کنید:
+   ```bash
+   cd ~/AIMall/backend
+   npm install --no-audit --no-fund
+   cd ~/AIMall/frontend
+   npm install --no-audit --no-fund
+   ```
+   سپس بقیهٔ مراحل (Prisma، Build، PM2) را مثل آپدیت دستی انجام دهید.
+
 ### اگر git pull خطا داد:
 
 ```bash
