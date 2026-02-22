@@ -7,6 +7,7 @@ import { ApiKeyAuthGuard } from '../api-keys/api-key-auth.guard';
 import { ScopeGuard } from '../../common/guards/scope.guard';
 import { RequireScope } from '../../common/decorators/require-scope.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { extractTextFromPdfBase64 } from './pdf-extract';
 
 @ApiTags('chat')
 @UseGuards(ApiKeyAuthGuard, ScopeGuard)
@@ -72,7 +73,16 @@ export class ChatController {
     const imageAttachments = attachments?.filter((a) => a.type === 'image') ?? [];
     const pdfAttachments = attachments?.filter((a) => a.type === 'pdf') ?? [];
     for (const pdf of pdfAttachments) {
-      msg += '\n\n[فایل PDF پیوست شده]';
+      try {
+        const pdfText = await extractTextFromPdfBase64(pdf.data);
+        if (pdfText) {
+          msg += `\n\n[محتوای استخراج‌شده از فایل PDF (${pdf.name || 'پیوست'}):]\n${pdfText}`;
+        } else {
+          msg += '\n\n[فایل PDF پیوست شده — متن قابل استخراج نبود.]';
+        }
+      } catch {
+        msg += '\n\n[فایل PDF پیوست شده — خطا در خواندن محتوا.]';
+      }
     }
     const allAttachments = imageAttachments.length > 0 ? attachments : undefined;
 

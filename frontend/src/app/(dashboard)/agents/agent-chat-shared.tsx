@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Send, Loader2, Bot, User, Copy, Check, RotateCcw, ChevronLeft, MessageSquare, LayoutGrid, Bookmark, BarChart3, Settings, BookmarkPlus, Trash2, AlertCircle, Zap, Coins, Gauge, Settings2, PanelLeftClose, PanelLeftOpen, History } from 'lucide-react';
+import { Send, Loader2, Bot, User, Copy, Check, RotateCcw, ChevronLeft, MessageSquare, LayoutGrid, Bookmark, BarChart3, Settings, BookmarkPlus, Trash2, AlertCircle, Zap, Coins, Gauge, Settings2, PanelLeftClose, PanelLeftOpen, History, Paperclip, FileText, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -78,9 +78,11 @@ export function AgentChatPage({ config }: { config: AgentChatConfig }) {
   const [style, setStyle] = useState('detailed');
   const [mode, setMode] = useState('fast');
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<{ id: string; file: File; preview?: string }[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: agentConversations = [], isLoading: convsLoading } = useQuery({
     queryKey: ['agent-conversations', agentId, currentOrganizationId],
@@ -141,9 +143,59 @@ export function AgentChatPage({ config }: { config: AgentChatConfig }) {
     }
   }, [agentId, queryClient, currentOrganizationId]);
 
+  const readFileAsBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1] || '');
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const parseAgentSSE = async (
+    res: Response,
+    opts: { onDelta: (c: string) => void; onUsage: (u: { model?: string; coinCost?: number }) => void; onDone: () => void; onError: (m: string) => void },
+  ) => {
+    const reader = res.body?.getReader();
+    if (!reader) {
+      opts.onError('بدون پاسخ');
+      return;
+    }
+    const decoder = new TextDecoder();
+    let buffer = '';
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data: ')) continue;
+          try {
+            const d = JSON.parse(trimmed.slice(6));
+            if (d.type === 'delta') opts.onDelta(d.content ?? '');
+            else if (d.type === 'usage') opts.onUsage(d);
+            else if (d.type === 'done') {
+              opts.onDone();
+              return;
+            } else if (d.type === 'error') {
+              opts.onError(d.message || 'خطا');
+              return;
+            }
+          } catch {}
+        }
+      }
+      opts.onDone();
+    } catch {
+      opts.onError('خطا در خواندن پاسخ');
+    }
+  };
+
   const sendMessage = useCallback(async (overrideText?: string) => {
     const text = (overrideText ?? message).trim();
-    if (!text || streaming) return;
+    const hasAttachments = attachedFiles.length > 0;
+    if ((!text && !hasAttachments) || streaming) return;
 
     let convId = conversationId;
     if (!convId) {
@@ -164,15 +216,57 @@ export function AgentChatPage({ config }: { config: AgentChatConfig }) {
     setStreamMeta(null);
     setStreamError(null);
 
-    const userMsg: Message = { id: `tmp-${Date.now()}`, role: 'user', content: text };
+    const displayText = text || (hasAttachments ? '[فایل‌های پیوست شده]' : '');
+    const userMsg: Message = { id: `tmp-${Date.now()}`, role: 'user', content: displayText };
     setLocalMessages((prev) => [...prev, userMsg]);
 
+    const ws = getWorkspaceContextForAgent(agentId);
+    const pre: string[] = [];
+    if (settings.tone) pre.push('لحن ترجیحی کاربر: ' + settings.tone);
+    if (settings.language) pre.push('زبان ترجیحی: ' + settings.language);
+    const workspaceContext = pre.length ? pre.join('. ') + (ws ? '\n' + ws : '') : ws;
+
+    if (hasAttachments) {
+      try {
+        const attachments = await Promise.all(
+          attachedFiles.map(async (a) => ({
+            type: a.file.type.startsWith('image/') ? 'image' : (a.file.name?.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image'),
+            data: await readFileAsBase64(a.file),
+            name: a.file.name,
+          })),
+        );
+        setAttachedFiles([]);
+        const res = await api.agentStreamPost(agentId, {
+          conversationId: convId!,
+          message: text,
+          level,
+          style,
+          mode,
+          integrityMode: false,
+          workspaceContext: workspaceContext || undefined,
+          attachments,
+        });
+        await parseAgentSSE(res, {
+          onDelta: (c) => setStreamText((prev) => prev + c),
+          onUsage: (u) => setStreamMeta({ model: u.model, coinCost: u.coinCost }),
+          onDone: () => {
+            setStreaming(false);
+            setStreamText('');
+            queryClient.invalidateQueries({ queryKey: ['agent-messages', agentId, convId] });
+          },
+          onError: (m) => {
+            toast.error(m);
+            setStreaming(false);
+          },
+        });
+      } catch (err: any) {
+        toast.error(err.message || 'خطا در ارسال');
+        setStreaming(false);
+      }
+      return;
+    }
+
     try {
-      const ws = getWorkspaceContextForAgent(agentId);
-      const pre: string[] = [];
-      if (settings.tone) pre.push('لحن ترجیحی کاربر: ' + settings.tone);
-      if (settings.language) pre.push('زبان ترجیحی: ' + settings.language);
-      const workspaceContext = pre.length ? pre.join('. ') + (ws ? '\n' + ws : '') : ws;
       const url = api.agentStreamUrl(agentId, convId!, text, {
         level,
         style,
@@ -213,7 +307,7 @@ export function AgentChatPage({ config }: { config: AgentChatConfig }) {
       toast.error(err.message);
       setStreaming(false);
     }
-  }, [agentId, conversationId, message, streaming, currentOrganizationId, queryClient, level, style, mode, settings]);
+  }, [agentId, conversationId, message, streaming, currentOrganizationId, queryClient, level, style, mode, settings, attachedFiles]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -481,9 +575,49 @@ export function AgentChatPage({ config }: { config: AgentChatConfig }) {
                   )}
                   <div ref={messagesEndRef} />
                 </ScrollArea>
+                {attachedFiles.length > 0 && (
+                  <div className="px-3 pt-2 flex flex-wrap gap-2 flex-row-reverse border-t border-border/50">
+                    {attachedFiles.map((a) => (
+                      <div key={a.id} className="flex items-center gap-1.5 text-xs flex-row-reverse">
+                        {a.preview ? (
+                          <img src={a.preview} alt="" className="h-10 w-10 rounded object-cover flex-shrink-0" />
+                        ) : (
+                          <FileText className="h-8 w-8 text-muted-foreground flex-shrink-0" />
+                        )}
+                        <span className="truncate max-w-[120px]">{a.file.name}</span>
+                        <button type="button" onClick={() => setAttachedFiles((prev) => prev.filter((x) => x.id !== a.id))} className="p-0.5 rounded hover:bg-muted" aria-label="حذف پیوست">
+                          <X className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="p-3 border-t flex gap-2 flex-shrink-0 flex-row-reverse">
-                  <Textarea ref={textareaRef} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder="پیام خود را بنویسید..." className="min-h-[80px] resize-none text-right" dir="rtl" disabled={streaming} aria-label="متن پیام" />
-                  <Button onClick={() => sendMessage()} disabled={streaming || !message.trim()} size="icon" className="shrink-0 h-[80px] w-12" aria-label={streaming ? 'در حال ارسال' : 'ارسال پیام'}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,.pdf"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (!files?.length) return;
+                      const next = Array.from(files).map((file) => {
+                        const id = Math.random().toString(36).slice(2);
+                        const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
+                        return { id, file, preview };
+                      });
+                      setAttachedFiles((prev) => [...prev, ...next]);
+                      e.target.value = '';
+                    }}
+                  />
+                  {!streaming && (
+                    <Button type="button" variant="ghost" size="icon" className="shrink-0 h-[80px] w-12" onClick={() => fileInputRef.current?.click()} title="پیوست فایل (تصویر یا PDF)" aria-label="پیوست فایل">
+                      <Paperclip className="h-5 w-5 text-muted-foreground" />
+                    </Button>
+                  )}
+                  <Textarea ref={textareaRef} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder="پیام خود را بنویسید..." className="min-h-[80px] resize-none text-right flex-1" dir="rtl" disabled={streaming} aria-label="متن پیام" />
+                  <Button onClick={() => sendMessage()} disabled={streaming || (!message.trim() && attachedFiles.length === 0)} size="icon" className="shrink-0 h-[80px] w-12" aria-label={streaming ? 'در حال ارسال' : 'ارسال پیام'}>
                     {streaming ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                   </Button>
                 </div>

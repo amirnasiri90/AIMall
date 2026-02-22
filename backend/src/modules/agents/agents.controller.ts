@@ -7,6 +7,7 @@ import { OrganizationsService } from '../organizations/organizations.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtService } from '@nestjs/jwt';
+import { extractTextFromPdfBase64 } from '../chat/pdf-extract';
 
 @Controller('agents')
 export class AgentsController {
@@ -124,6 +125,71 @@ export class AgentsController {
       };
 
       const stream = this.agentsService.streamAgent(user.id, agentId, conversationId, message, params);
+      for await (const chunk of stream) {
+        res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+      }
+    } catch (error: any) {
+      res.write(`data: ${JSON.stringify({ type: 'error', message: error.message || 'خطا در پردازش' })}\n\n`);
+    }
+    res.end();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':agentId/stream')
+  async streamPost(
+    @Param('agentId') agentId: string,
+    @CurrentUser() user: any,
+    @Body('conversationId') conversationId: string,
+    @Body('message') message: string,
+    @Body('level') level: string,
+    @Body('style') style: string,
+    @Body('mode') mode: string,
+    @Body('subject') subject: string,
+    @Body('integrityMode') integrityMode: boolean,
+    @Body('place') place: string,
+    @Body('timePerDay') timePerDay: string,
+    @Body('travelStyle') travelStyle: string,
+    @Body('destinationType') destinationType: string,
+    @Body('workspaceContext') workspaceContext: string,
+    @Body('attachments') attachments: { type: string; data: string; name?: string }[] | undefined,
+    @Res() res: Response,
+  ) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    let msg = message || '';
+    const imageAttachments = attachments?.filter((a) => a.type === 'image') ?? [];
+    const pdfAttachments = attachments?.filter((a) => a.type === 'pdf') ?? [];
+    for (const pdf of pdfAttachments) {
+      try {
+        const pdfText = await extractTextFromPdfBase64(pdf.data);
+        if (pdfText) {
+          msg += `\n\n[محتوای استخراج‌شده از فایل PDF (${pdf.name || 'پیوست'}):]\n${pdfText}`;
+        } else {
+          msg += '\n\n[فایل PDF پیوست شده — متن قابل استخراج نبود.]';
+        }
+      } catch {
+        msg += '\n\n[فایل PDF پیوست شده — خطا در خواندن محتوا.]';
+      }
+    }
+
+    try {
+      const params = {
+        level: (level || 'standard') as any,
+        style: style || 'full_solution',
+        mode: (mode || 'fast') as any,
+        subject: subject || undefined,
+        integrityMode: integrityMode === true,
+        place: place || undefined,
+        timePerDay: timePerDay || undefined,
+        travelStyle: travelStyle || undefined,
+        destinationType: destinationType || undefined,
+        workspaceContext: workspaceContext || undefined,
+      };
+      const imageOnly = imageAttachments.length > 0 ? imageAttachments : undefined;
+      const stream = this.agentsService.streamAgent(user.id, agentId, conversationId, msg, params, imageOnly);
       for await (const chunk of stream) {
         res.write(`data: ${JSON.stringify(chunk)}\n\n`);
       }

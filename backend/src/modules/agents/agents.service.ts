@@ -702,12 +702,31 @@ ${params.workspaceContext ? `\n# داده‌های فضای کار کاربر (�
 - تنوع محتوا: آموزشی/اعتمادسازی/تعامل/فروش.`;
   }
 
+  /** Build last user message content: string or multimodal array (text + images). */
+  private buildUserContent(
+    prompt: string,
+    imageAttachments?: { type: string; data: string; name?: string }[],
+  ): string | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> {
+    const imageParts = imageAttachments?.filter((a) => a.type === 'image') ?? [];
+    if (imageParts.length === 0) return prompt;
+    const parts: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [];
+    if (prompt.trim()) parts.push({ type: 'text', text: prompt });
+    const mimeByExt: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp' };
+    for (const img of imageParts) {
+      const ext = img.name?.match(/\.[a-z0-9]+$/i)?.[0]?.toLowerCase();
+      const mime = (ext && mimeByExt[ext]) || 'image/jpeg';
+      parts.push({ type: 'image_url', image_url: { url: `data:${mime};base64,${img.data}` } });
+    }
+    return parts.length === 1 && parts[0].type === 'text' ? parts[0].text : parts;
+  }
+
   async *streamAgent(
     userId: string,
     agentId: string,
     conversationId: string,
     message: string,
     params: StudentTutorParams,
+    imageAttachments?: { type: string; data: string; name?: string }[],
   ): AsyncGenerator<{ type: string; content?: string; model?: string; coinCost?: number }> {
     const agent = this.getAgent(agentId);
     if (!agent || agent.status !== 'active') {
@@ -761,10 +780,11 @@ ${params.workspaceContext ? `\n# داده‌های فضای کار کاربر (�
     } else {
       systemPrompt = this.buildStudentTutorSystemPrompt(params);
     }
+    const lastUserContent = this.buildUserContent(message, imageAttachments);
     const messages = [
       { role: 'system', content: systemPrompt },
       ...contextMessages,
-      { role: 'user', content: message },
+      { role: 'user', content: lastUserContent },
     ];
 
     let fullResponse = '';

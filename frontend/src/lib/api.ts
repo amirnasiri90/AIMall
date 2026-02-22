@@ -496,6 +496,44 @@ export const api = {
     if (token) qs.set('token', token);
     return `${getApiBaseUrl()}/agents/${agentId}/stream?${qs}`;
   },
+  /** POST agent stream (for requests with file attachments). Returns response for streaming. */
+  agentStreamPost: async (
+    agentId: string,
+    body: {
+      conversationId: string;
+      message: string;
+      level: string;
+      style: string;
+      mode: string;
+      subject?: string;
+      integrityMode: boolean;
+      place?: string;
+      timePerDay?: string;
+      travelStyle?: string;
+      destinationType?: string;
+      workspaceContext?: string;
+      attachments?: { type: string; data: string; name?: string }[];
+    },
+  ) => {
+    const token = getToken();
+    const res = await fetch(`${getApiBaseUrl()}/agents/${agentId}/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) {
+      clearTokenAndNotify();
+      throw new Error('نشست منقضی شده. لطفاً دوباره وارد شوید.');
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'خطای سرور' }));
+      throw new Error(err.message || 'خطا در ارسال');
+    }
+    return res;
+  },
 
   // ── Persian PDF Maker (تبدیل به PDF فارسی) ──
   persianPdfTextToPdf: (body: {
