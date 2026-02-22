@@ -99,6 +99,18 @@ curl http://localhost:3001/api/v1/health
 
 ## عیب‌یابی
 
+### اگر Prisma خطای «url is no longer supported» یا «Move to prisma.config.ts» داد
+
+اسکریپت آپدیت از **Prisma نسخهٔ پروژه (۵)** استفاده می‌کند (`npm run prisma:generate`). اگر دستی `npx prisma` زدید و نسخهٔ ۷ نصب شد، آن را نادیده بگیرید و از اسکریپت آپدیت استفاده کنید، یا در پوشهٔ backend اجرا کنید:
+
+```bash
+cd ~/AIMall/backend
+npm run prisma:generate
+npm run prisma:migrate:deploy
+```
+
+هرگز `npx prisma` بدون مشخص کردن نسخه نزنید (نسخهٔ ۷ با schema فعلی سازگار نیست).
+
 ### اگر npm ci با «Killed» تمام شد (کمبود RAM)
 
 روی سرورهای کم‌حافظه (مثلاً ۱GB) ممکن است `npm ci` توسط سیستم با **Killed** قطع شود. اسکریپت `update.sh` در این حالت خودش با `npm install` دوباره تلاش می‌کند. اگر باز هم خطا دیدید:

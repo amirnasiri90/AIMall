@@ -51,8 +51,8 @@ log_info "نصب وابستگی‌های Frontend..."
 npm_install "$PROJECT_ROOT/frontend" "Frontend" || { log_warn "نصب Frontend ناموفق."; exit 1; }
 
 log_info "Prisma generate و migrate..."
-(cd "$PROJECT_ROOT/backend" && npx prisma generate)
-(cd "$PROJECT_ROOT/backend" && npx prisma migrate deploy) || log_warn "migrate deploy خطا داد."
+(cd "$PROJECT_ROOT/backend" && npm run prisma:generate) || { log_warn "prisma generate خطا داد."; exit 1; }
+(cd "$PROJECT_ROOT/backend" && npm run prisma:migrate:deploy) || log_warn "migrate deploy خطا داد."
 
 log_info "Build Backend..."
 (cd "$PROJECT_ROOT/backend" && (npm run build:prod 2>/dev/null || (rm -rf dist && npm run build)))
