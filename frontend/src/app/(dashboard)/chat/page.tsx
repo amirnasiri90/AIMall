@@ -595,7 +595,7 @@ export default function ChatPage() {
    * ██  R E N D E R  (Genie-style shell)
    * ══════════════════════════════════════════ */
   return (
-    <div className="flex h-full min-h-0 gap-2 sm:gap-4 text-right overflow-hidden" dir="rtl">
+    <div className="flex h-full min-h-0 gap-2 sm:gap-4 text-right overflow-hidden max-w-full" dir="rtl">
 
       {/* ─────────── لیست گفتگوها (سمت راست برای کاربر ایرانی، اسکرول داخلی) ─────────── */}
       <div className={cn(
@@ -733,7 +733,7 @@ export default function ChatPage() {
         </ScrollArea>
       </div>
 
-      {/* ─────────── Main Chat Area (اسکرول فقط داخل باکس پیام‌ها) ─────────── */}
+      {/* ─────────── Main Chat Area (اسکرول فقط داخل باکس پیام‌ها؛ جلوگیری از رفتن محتوا زیر منو) ─────────── */}
       <div className={cn('flex-1 flex flex-col min-w-0 min-h-0 rounded-2xl md:rounded-[28px] glass overflow-hidden border border-border', showList && !activeConv && 'hidden md:flex')}>
         {user != null && (user.coins ?? 0) < 100 && (
           <div className="mx-2 mt-2 mb-1 rounded-xl sm:rounded-2xl bg-amber-500/15 border border-amber-500/30 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-amber-800 dark:text-amber-200 flex items-center gap-2 flex-shrink-0 flex-wrap">
@@ -771,7 +771,10 @@ export default function ChatPage() {
               {/* Smart Modes (or model selector when advanced) */}
               {advancedMode ? (
                 <Select value={model} onValueChange={setModel}>
-                  <SelectTrigger className="w-32 sm:w-44 h-8 text-xs text-right">
+                  <SelectTrigger
+                    className="h-8 text-xs text-right max-w-[10rem] sm:max-w-[12rem] min-w-0 shrink [&>span]:truncate [&>span]:block [&>span]:text-right"
+                    title={models?.find((m: any) => m.id === model) ? `${modelDisplayName(models.find((m: any) => m.id === model).name)} — ${models.find((m: any) => m.id === model).coinCost} سکه` : undefined}
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -871,10 +874,10 @@ export default function ChatPage() {
               </div>
             </div>
 
-            {/* ── ناحیه پیام‌ها: فقط این بلوک اسکرول دارد ── */}
-            <div className="flex-1 min-h-0 overflow-hidden rounded-2xl bg-card/50 border border-border mx-2 mb-2 flex flex-col" dir="rtl">
+            {/* ── ناحیه پیام‌ها: فقط این بلوک اسکرول دارد؛ محتوا افقی اسکرول می‌شود تا زیر منو نرود ── */}
+            <div className="flex-1 min-h-0 overflow-hidden overflow-x-hidden rounded-2xl bg-card/50 border border-border mx-2 mb-2 flex flex-col min-w-0" dir="rtl">
               <ScrollArea className="flex-1 min-h-0">
-                <div className="p-4 space-y-4 text-right">
+                <div className="p-4 space-y-4 text-right min-w-0 break-words overflow-x-auto max-w-full">
                   {msgsLoading ? (
                     Array.from({ length: 3 }).map((_, i) => (
                       <div key={i} className={cn('flex gap-3', i % 2 === 0 ? 'justify-start' : 'justify-end')}>

@@ -321,26 +321,44 @@ export default function DashboardHomePage() {
             </Button>
           </form>
           {intentResult && (
-            <div
-              className="mt-4 rounded-xl border border-primary/30 bg-background/80 p-4 flex flex-col sm:flex-row sm:items-center gap-4"
-              role="status"
-              aria-live="polite"
-            >
-              <div className="rounded-xl bg-primary/10 p-3 shrink-0">
-                {(() => { const Icon = getIntentIcon(intentResult.href); return <Icon className="h-8 w-8 text-primary" />; })()}
+            <>
+              <div
+                className="mt-4 rounded-xl border border-primary/30 bg-background/80 p-4 flex flex-col sm:flex-row sm:items-center gap-4"
+                role="status"
+                aria-live="polite"
+              >
+                <div className="rounded-xl bg-primary/10 p-3 shrink-0">
+                  {(() => { const Icon = getIntentIcon(intentResult.href); return <Icon className="h-8 w-8 text-primary" />; })()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm text-muted-foreground mb-0.5">به نظر می‌رسه می‌خوای:</p>
+                  <p className="font-semibold text-base">{intentResult.label}</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">{intentResult.desc}</p>
+                </div>
+                <Button asChild className="shrink-0 min-h-[44px]" size="sm">
+                  <Link href={intentResult.href}>
+                    <ArrowLeft className="h-4 w-4 ms-1" />
+                    ورود به بخش
+                  </Link>
+                </Button>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm text-muted-foreground mb-0.5">به نظر می‌رسه می‌خوای:</p>
-                <p className="font-semibold text-base">{intentResult.label}</p>
-                <p className="text-sm text-muted-foreground mt-0.5">{intentResult.desc}</p>
-              </div>
-              <Button asChild className="shrink-0 min-h-[44px]" size="sm">
-                <Link href={intentResult.href}>
-                  <ArrowLeft className="h-4 w-4 ms-1" />
-                  ورود به بخش
-                </Link>
-              </Button>
-            </div>
+              {(() => {
+                const steps = intentResult.steps ?? INTENT_TARGETS.find((t) => t.href === intentResult!.href)?.steps;
+                if (!steps?.length) return null;
+                return (
+                  <div className="mt-3 rounded-xl border border-border bg-muted/30 p-4" role="region" aria-label="مراحل انجام کار">
+                    <p className="text-sm font-medium text-foreground mb-2">مراحل انجام کار:</p>
+                    <ol className="list-decimal list-inside space-y-1.5 text-sm text-muted-foreground">
+                      {steps.map((step, i) => (
+                        <li key={i} className="text-right">
+                          {step}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                );
+              })()}
+            </>
           )}
         </CardContent>
       </Card>

@@ -211,7 +211,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
         <main
           className={cn(
-            'flex-1 min-w-0 flex flex-col min-h-0 overflow-hidden',
+            'flex-1 min-w-0 flex flex-col min-h-0 overflow-hidden overflow-x-hidden',
             !isChat &&
               'rounded-2xl sm:rounded-[28px] glass overflow-auto border border-border'
           )}

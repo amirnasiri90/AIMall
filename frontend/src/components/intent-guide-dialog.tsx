@@ -36,7 +36,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { matchIntent, ALL_INTENT_HREFS, type IntentTarget } from '@/lib/intent-targets';
+import { matchIntent, ALL_INTENT_HREFS, INTENT_TARGETS, type IntentTarget } from '@/lib/intent-targets';
 import { api } from '@/lib/api';
 
 const ICON_BY_HREF: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -69,26 +69,41 @@ const ICON_BY_HREF: Record<string, React.ComponentType<{ className?: string }>> 
 
 function IntentResult({ target, onClose }: { target: IntentTarget; onClose: () => void }) {
   const Icon = ICON_BY_HREF[target.href] ?? Sparkles;
+  const steps = target.steps ?? INTENT_TARGETS.find((t) => t.href === target.href)?.steps;
   return (
-    <div
-      className="mt-4 rounded-xl border border-primary/30 bg-background/80 p-4 flex flex-col sm:flex-row sm:items-center gap-4"
-      role="status"
-      aria-live="polite"
-    >
-      <div className="rounded-xl bg-primary/10 p-3 shrink-0">
-        <Icon className="h-8 w-8 text-primary" />
+    <div className="mt-4 space-y-3">
+      <div
+        className="rounded-xl border border-primary/30 bg-background/80 p-4 flex flex-col sm:flex-row sm:items-center gap-4"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="rounded-xl bg-primary/10 p-3 shrink-0">
+          <Icon className="h-8 w-8 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm text-muted-foreground mb-0.5">به نظر می‌رسه می‌خوای:</p>
+          <p className="font-semibold text-base">{target.label}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{target.desc}</p>
+        </div>
+        <Button asChild className="shrink-0 min-h-[44px]" size="sm" onClick={onClose}>
+          <Link href={target.href}>
+            <ArrowLeft className="h-4 w-4 ms-1" />
+            ورود به بخش
+          </Link>
+        </Button>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm text-muted-foreground mb-0.5">به نظر می‌رسه می‌خوای:</p>
-        <p className="font-semibold text-base">{target.label}</p>
-        <p className="text-sm text-muted-foreground mt-0.5">{target.desc}</p>
-      </div>
-      <Button asChild className="shrink-0 min-h-[44px]" size="sm" onClick={onClose}>
-        <Link href={target.href}>
-          <ArrowLeft className="h-4 w-4 ms-1" />
-          ورود به بخش
-        </Link>
-      </Button>
+      {steps && steps.length > 0 && (
+        <div className="rounded-xl border border-border bg-muted/30 p-4" role="region" aria-label="مراحل انجام کار">
+          <p className="text-sm font-medium text-foreground mb-2">مراحل انجام کار:</p>
+          <ol className="list-decimal list-inside space-y-1.5 text-sm text-muted-foreground">
+            {steps.map((step, i) => (
+              <li key={i} className="text-right">
+                {step}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
   );
 }
