@@ -21,8 +21,8 @@ export class BrandingController {
   private baseUrl(req: Request): string {
     const env = process.env.BACKEND_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL;
     if (env) return env.replace(/\/$/, '');
-    const protocol = (req as any).protocol || 'http';
-    const host = req.get('host') || '';
+    const protocol = req.get('x-forwarded-proto') === 'https' ? 'https' : (req as any).protocol || 'http';
+    const host = req.get('x-forwarded-host') || req.get('host') || '';
     return `${protocol}://${host}`;
   }
 

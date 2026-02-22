@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { ApiKeysService } from './api-keys.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PUBLIC_KEY } from '../../common/decorators/public.decorator';
 
 export const JWT_OR_API_KEY = 'jwtOrApiKey';
 
@@ -12,9 +13,16 @@ export class ApiKeyAuthGuard implements CanActivate {
     private apiKeysService: ApiKeysService,
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) return true;
+
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
     const apiKeyHeader = request.headers['x-api-key'];

@@ -1,12 +1,40 @@
 import { Controller, Post, Get, Body, Query, UseGuards, BadRequestException, HttpException } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ImageService } from './image.service';
 import { JobsService } from '../jobs/jobs.service';
 import { ApiKeyAuthGuard } from '../api-keys/api-key-auth.guard';
 import { ScopeGuard } from '../../common/guards/scope.guard';
 import { RequireScope } from '../../common/decorators/require-scope.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { GenerateImageDto } from './dto/generate-image.dto';
+
+/** دامنه‌های مجاز برای پروکسی تصویر (جلوگیری از SSRF) */
+const PROXY_ALLOWED_HOSTS = [
+  'openrouter.ai',
+  'cdn.openrouter.ai',
+  '.blob.core.windows.net',
+  '.azure.com',
+  'pollinations.ai',
+  'pbxt.replicate.delivery',
+  'replicate.delivery',
+  'storage.googleapis.com',
+  '.amazonaws.com',
+  'hmb.art',
+];
+
+function isProxyUrlAllowed(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:') return false;
+    const host = url.hostname.toLowerCase();
+    return PROXY_ALLOWED_HOSTS.some((allowed) => host === allowed || host.endsWith(allowed));
+  } catch {
+    return false;
+  }
+}
 
 @ApiTags('images')
 @UseGuards(ApiKeyAuthGuard, ScopeGuard)
@@ -17,6 +45,28 @@ export class ImageController {
     private imageService: ImageService,
     private jobsService: JobsService,
   ) {}
+
+  @Get('proxy')
+  @Public()
+  async proxyImage(@Query('url') urlEncoded: string, @Res() res: Response) {
+    if (!urlEncoded?.trim()) throw new BadRequestException('آدرس تصویر ارسال نشده.');
+    let url: string;
+    try {
+      url = decodeURIComponent(urlEncoded.trim());
+    } catch {
+      throw new BadRequestException('آدرس تصویر نامعتبر است.');
+    }
+    if (!isProxyUrlAllowed(url)) throw new BadRequestException('این آدرس برای پروکسی مجاز نیست.');
+    const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+    if (!response.ok) {
+      throw new BadRequestException(`بارگذاری تصویر ناموفق: ${response.status}`);
+    }
+    const contentType = response.headers.get('content-type') || 'image/png';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    const buffer = Buffer.from(await response.arrayBuffer());
+    res.send(buffer);
+  }
 
   @Get('templates')
   getTemplates() {

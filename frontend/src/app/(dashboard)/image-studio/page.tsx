@@ -29,7 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { api } from '@/lib/api';
+import { api, getImageDisplayUrl } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { formatDate } from '@/lib/utils';
 
@@ -720,7 +720,7 @@ export default function ImageStudioPage() {
               >
                 <div className="relative aspect-square bg-muted/40">
                   <img
-                    src={item.output}
+                    src={getImageDisplayUrl(item.output)}
                     alt={item.input}
                     className="w-full h-full object-cover"
                     loading="lazy"
@@ -735,7 +735,7 @@ export default function ImageStudioPage() {
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-end">
                     <div className="w-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <a
-                        href={item.output}
+                        href={getImageDisplayUrl(item.output) || item.output}
                         download={`aimall-${formatDate(item.createdAt).replace(/\s/g, '-')}.png`}
                         target="_blank"
                         rel="noopener"
@@ -835,7 +835,7 @@ export default function ImageStudioPage() {
                         }`}
                         onClick={() => { setEditImageUrl(item.output); setEditResult(null); setEditError(null); }}
                       >
-                        <img src={item.output} alt="" className="w-full aspect-square object-cover" />
+                        <img src={getImageDisplayUrl(item.output)} alt="" className="w-full aspect-square object-cover" />
                       </button>
                     ))}
                     {(!history || history.length === 0) && (
@@ -943,7 +943,7 @@ export default function ImageStudioPage() {
                   <div className="space-y-4">
                     {!editResultImageError ? (
                       <img
-                        src={editResult.imageUrl}
+                        src={getImageDisplayUrl(editResult.imageUrl)}
                         alt="نتیجه"
                         className="w-full rounded-xl border border-border/80 max-h-[400px] object-contain"
                         onLoad={() => setEditResultImageError(false)}
@@ -962,7 +962,7 @@ export default function ImageStudioPage() {
                         className="rounded-xl"
                         onClick={() => {
                           const a = document.createElement('a');
-                          a.href = editResult.imageUrl;
+                          a.href = getImageDisplayUrl(editResult.imageUrl) || editResult.imageUrl;
                           a.download = `aimall-edit-${Date.now()}.png`;
                           a.click();
                         }}
@@ -1036,7 +1036,7 @@ export default function ImageStudioPage() {
                   >
                     <div className="relative aspect-square bg-muted/40">
                       <img
-                        src={item.output}
+                        src={getImageDisplayUrl(item.output)}
                         alt={item.input}
                         className="w-full h-full object-cover"
                         loading="lazy"
@@ -1051,7 +1051,7 @@ export default function ImageStudioPage() {
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-end">
                         <div className="w-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <a
-                            href={item.output}
+                            href={getImageDisplayUrl(item.output) || item.output}
                             download={`aimall-${formatDate(item.createdAt).replace(/\s/g, '-')}.png`}
                             target="_blank"
                             rel="noopener"

@@ -134,3 +134,35 @@ pm2 logs aimall-frontend --lines 50
 pm2 restart all
 ```
 
+## پس از آپدیت سرور — تنظیمات لازم
+
+برای اینکه همه‌چیز درست کار کند (لوگو با HTTPS، تصاویر ویرایش بدون 403، بدون Mixed Content):
+
+1. **متغیر محیطی بک‌اند**  
+   در `.env` بک‌اند روی سرور مقدار زیر را با دامنهٔ واقعی پنل تنظیم کنید:
+   ```bash
+   BACKEND_PUBLIC_URL=https://panel.aifoapp.ir
+   ```
+   (اگر پنل روی دامنهٔ دیگری است، همان را بگذارید.)
+
+2. **Nginx**  
+   برای پروکسی به بک‌اند این دو هدر را حتماً بفرستید:
+   ```nginx
+   proxy_set_header X-Forwarded-Proto $scheme;
+   proxy_set_header X-Forwarded-Host $host;
+   ```
+   اگر پشت SSL هستید و `$scheme` برابر `http` است، می‌توانید به‌جای آن بنویسید:
+   ```nginx
+   proxy_set_header X-Forwarded-Proto https;
+   ```
+
+3. **ری‌استارت سرویس‌ها**  
+   بعد از تغییر `.env` یا Nginx:
+   ```bash
+   pm2 restart all
+   sudo systemctl reload nginx   # در صورت استفاده از Nginx
+   ```
+
+4. **کش Cloudflare (در صورت استفاده)**  
+   بعد از آپدیت یک بار Cache را Purge کنید تا نسخهٔ جدید فرانت و لوگو لود شود.
+

@@ -108,7 +108,9 @@ export class ImageService {
     const effectiveEditModel = editModel?.trim() || 'flux';
     const resolved = await this.resolver.resolve('image', effectiveEditModel);
     if (!resolved?.providerKey || resolved.providerKey !== 'openrouter' || !resolved.apiKey) {
-      throw new BadRequestException('برای ویرایش تصویر کلید OpenRouter در پنل مدیریت تنظیم شود.');
+      throw new BadRequestException(
+        'ویرایش تصویر با مدل Flux از طریق OpenRouter انجام می‌شود. در پنل مدیریت → ارائه‌دهندگان، کلید API مربوط به OpenRouter را تنظیم کنید.',
+      );
     }
     const openRouterModel =
       resolved.modelId?.includes('/') ?

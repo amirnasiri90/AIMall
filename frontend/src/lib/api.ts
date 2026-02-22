@@ -16,6 +16,15 @@ export function getApiBaseUrlFull(): string {
   return `http://127.0.0.1:${port}/api/v1`;
 }
 
+/** برای نمایش تصویر در <img>: اگر آدرس خارجی است از پروکسی استفاده می‌کند تا از خطای 403 (احراز هویت) جلوگیری شود. */
+export function getImageDisplayUrl(url: string | undefined | null): string {
+  if (!url || typeof url !== 'string') return '';
+  const u = url.trim();
+  if (u.startsWith('data:') || u.startsWith('blob:') || u.startsWith('/')) return u;
+  const base = getApiBaseUrl();
+  return `${base}/images/proxy?url=${encodeURIComponent(u)}`;
+}
+
 function getToken() {
   if (typeof window !== 'undefined') return localStorage.getItem('token');
   return null;
