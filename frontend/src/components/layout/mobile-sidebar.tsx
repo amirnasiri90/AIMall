@@ -59,7 +59,7 @@ export function MobileSidebar({ open, onClose }: { open: boolean; onClose: () =>
   return (
     <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="منوی اصلی">
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} aria-hidden />
-      <div className="fixed top-0 right-0 h-full w-[min(280px,85vw)] max-w-[280px] glass-heavy shadow-glass-lg border-l border-[hsl(var(--glass-border))] flex flex-col safe-area-inset-top">
+      <div className="fixed top-0 right-0 h-full w-[min(280px,85vw)] max-w-[280px] glass-heavy shadow-glass-lg border-l border-[hsl(var(--glass-border))] flex flex-col safe-area-inset-top" dir="rtl">
         <div className="flex h-14 min-h-[52px] items-center justify-between border-b border-[hsl(var(--glass-border-subtle))] px-4 flex-shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <div className="relative h-8 w-8 flex-shrink-0">

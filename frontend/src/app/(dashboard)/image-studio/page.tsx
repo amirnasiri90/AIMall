@@ -276,14 +276,14 @@ export default function ImageStudioPage() {
   }, [editImageUrl, editPrompt, editType, editRatio, editModel, refetch, history]);
 
   return (
-    <div className="space-y-6 text-right w-full max-w-6xl me-auto" dir="rtl">
+    <div className="space-y-4 sm:space-y-6 text-right w-full max-w-6xl me-auto min-w-0 px-1 sm:px-0" dir="rtl">
       <div>
-        <h1 className="text-3xl font-bold">استودیو تصویر</h1>
-        <p className="text-muted-foreground mt-1">تصاویر خلاقانه با هوش مصنوعی بسازید</p>
+        <h1 className="text-2xl sm:text-3xl font-bold truncate">استودیو تصویر</h1>
+        <p className="text-muted-foreground mt-1 text-sm sm:text-base">تصاویر خلاقانه با هوش مصنوعی بسازید</p>
       </div>
 
-      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'generate' | 'edit')} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md me-auto ms-0">
+      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'generate' | 'edit')} className="w-full min-w-0">
+        <TabsList className="grid w-full grid-cols-2 max-w-md me-auto ms-0 w-full sm:w-auto">
           <TabsTrigger value="generate" className="rounded-xl">
             <Sparkles className="w-4 h-4 me-2" />
             تولید تصویر
@@ -315,8 +315,8 @@ export default function ImageStudioPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2" style={{ direction: 'rtl' }}>
-        <Card className="border border-border/80 bg-card/50 backdrop-blur-sm">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2 min-w-0" style={{ direction: 'rtl' }}>
+        <Card className="border border-border/80 bg-card/50 backdrop-blur-sm min-w-0 overflow-hidden">
           <CardHeader className="text-right">
             <CardTitle>ورودی</CardTitle>
             <CardDescription>دقیق توصیف کن؛ بازیگوش یا حرفه‌ای — هر دو جواب می‌دهیم</CardDescription>
@@ -365,7 +365,7 @@ export default function ImageStudioPage() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>نسبت</Label>
                 <Select value={ratio} onValueChange={setRatio}>
@@ -442,7 +442,7 @@ export default function ImageStudioPage() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>تعداد تصویر</Label>
                 <Select value={String(count)} onValueChange={(v) => setCount(Number(v))}>
@@ -500,11 +500,11 @@ export default function ImageStudioPage() {
               حدود ۱۵ تا ۴۵ ثانیه
             </p>
 
-            <div className="flex gap-2 flex-row-reverse">
+            <div className="flex gap-2 flex-row-reverse flex-wrap">
               <Button
                 onClick={() => generate()}
                 disabled={loading || !prompt.trim()}
-                className="flex-1 rounded-xl"
+                className="flex-1 min-w-[140px] rounded-xl"
               >
                 {loading ? (
                   <Loader2 className="me-2 h-4 w-4 animate-spin" />
@@ -522,14 +522,14 @@ export default function ImageStudioPage() {
           </CardContent>
         </Card>
 
-        <Card className="border border-border/80 bg-card/50 backdrop-blur-sm">
-          <CardHeader className="flex flex-row-reverse items-center justify-between gap-2 flex-wrap text-right">
-            <div>
+        <Card className="border border-border/80 bg-card/50 backdrop-blur-sm min-w-0 overflow-hidden">
+          <CardHeader className="flex flex-col sm:flex-row-reverse items-stretch sm:items-center justify-between gap-3 sm:gap-2 flex-wrap text-right">
+            <div className="min-w-0">
               <CardTitle>خروجی</CardTitle>
               <CardDescription>تصویر تولیدشده و پرامپت بهینه</CardDescription>
             </div>
             {result && (
-              <div className="flex items-center gap-2 flex-row-reverse">
+              <div className="flex items-center gap-2 flex-row-reverse flex-wrap shrink-0">
                 <Button
                   variant="outline"
                   size="sm"
@@ -567,9 +567,9 @@ export default function ImageStudioPage() {
           <CardContent className="text-right">
             {loading ? (
               <div className="space-y-4">
-                <Skeleton className="h-64 w-full rounded-xl" />
+                <Skeleton className="h-48 sm:h-64 w-full min-h-[200px] rounded-xl" />
                 <div className="flex items-center gap-2 text-sm text-muted-foreground flex-row-reverse">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin shrink-0" />
                   <span>حدود ۱۵ تا ۴۵ ثانیه...</span>
                 </div>
               </div>
@@ -595,14 +595,14 @@ export default function ImageStudioPage() {
                         </button>
                       ))}
                     </div>
-                    <div className="relative rounded-2xl overflow-hidden bg-muted/40">
+                    <div className="relative rounded-2xl overflow-hidden bg-muted/40 min-h-[200px] sm:min-h-[256px]">
                       {!imageLoaded && !imageError && (
-                        <div className="flex items-center justify-center h-64">
+                        <div className="flex items-center justify-center h-48 sm:h-64 min-h-[200px]">
                           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                         </div>
                       )}
                       {imageError ? (
-                        <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+                        <div className="flex items-center justify-center h-48 sm:h-64 min-h-[200px] text-muted-foreground text-sm">
                           خطا در بارگذاری
                         </div>
                       ) : (
@@ -610,7 +610,7 @@ export default function ImageStudioPage() {
                           src={currentImageUrl}
                           alt="Generated"
                           role="button"
-                          className={`w-full rounded-xl transition-opacity duration-300 cursor-zoom-in ${imageLoaded ? 'opacity-100' : 'opacity-0 h-0'}`}
+                          className={`w-full max-h-[70vh] sm:max-h-none object-contain rounded-xl transition-opacity duration-300 cursor-zoom-in ${imageLoaded ? 'opacity-100' : 'opacity-0 h-0'}`}
                           onLoad={() => setImageLoaded(true)}
                           onError={() => setImageError(true)}
                           onClick={() => {
@@ -622,14 +622,14 @@ export default function ImageStudioPage() {
                     </div>
                   </>
                 ) : (
-                  <div className="relative rounded-2xl overflow-hidden bg-muted/40">
+                  <div className="relative rounded-2xl overflow-hidden bg-muted/40 min-h-[200px] sm:min-h-[256px]">
                     {!imageLoaded && !imageError && (
-                      <div className="flex items-center justify-center h-64">
+                      <div className="flex items-center justify-center h-48 sm:h-64 min-h-[200px]">
                         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                       </div>
                     )}
                     {imageError ? (
-                      <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+                      <div className="flex items-center justify-center h-48 sm:h-64 min-h-[200px] text-muted-foreground text-sm">
                         خطا در بارگذاری
                       </div>
                     ) : (
@@ -637,7 +637,7 @@ export default function ImageStudioPage() {
                         src={currentImageUrl}
                         alt="Generated"
                         role="button"
-                        className={`w-full rounded-xl transition-opacity duration-500 cursor-zoom-in ${imageLoaded ? 'opacity-100' : 'opacity-0 h-0'}`}
+                        className={`w-full max-h-[70vh] sm:max-h-none object-contain rounded-xl transition-opacity duration-500 cursor-zoom-in ${imageLoaded ? 'opacity-100' : 'opacity-0 h-0'}`}
                         onLoad={() => setImageLoaded(true)}
                         onError={() => setImageError(true)}
                         onClick={() => {
@@ -674,10 +674,10 @@ export default function ImageStudioPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                <ImageIcon className="h-16 w-16 opacity-20 mb-4" />
-                <p>تصویر اینجا نمایش داده می‌شود</p>
-                <p className="text-xs mt-1">توصیف را وارد کنید و دکمه تولید را بزنید</p>
+              <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-muted-foreground text-center min-h-[200px] sm:min-h-[256px]">
+                <ImageIcon className="h-12 w-12 sm:h-16 sm:w-16 opacity-20 mb-3 sm:mb-4 shrink-0" />
+                <p className="text-sm sm:text-base">تصویر اینجا نمایش داده می‌شود</p>
+                <p className="text-xs mt-1 px-2">توصیف را وارد کنید و دکمه تولید را بزنید</p>
               </div>
             )}
           </CardContent>
@@ -685,32 +685,32 @@ export default function ImageStudioPage() {
       </div>
 
       {/* Gallery */}
-      <div className="space-y-4 w-full">
+      <div className="space-y-4 w-full min-w-0">
         <h2 className="text-xl font-semibold mb-4">گالری</h2>
-        <div className="flex flex-wrap gap-2 justify-end">
-          <div className="relative flex-1 min-w-[180px]">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-2">
+          <div className="relative w-full min-w-0 lg:col-span-2">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <Input
               value={historySearch}
               onChange={(e) => setHistorySearch(e.target.value)}
               placeholder="جستجو در توضیح یا پرامپت..."
-              className="rounded-xl pe-10"
+              className="rounded-xl pe-10 w-full min-w-0"
             />
           </div>
           <Input
             type="date"
             value={historyFrom}
             onChange={(e) => setHistoryFrom(e.target.value)}
-            className="rounded-xl w-40"
+            className="rounded-xl w-full min-w-0 sm:w-40"
           />
           <Input
             type="date"
             value={historyTo}
             onChange={(e) => setHistoryTo(e.target.value)}
-            className="rounded-xl w-40"
+            className="rounded-xl w-full min-w-0 sm:w-40"
           />
           <Select value={historyStyle} onValueChange={setHistoryStyle}>
-                <SelectTrigger className="rounded-xl w-36">
+                <SelectTrigger className="rounded-xl w-full min-w-0 sm:w-36">
                   <SelectValue placeholder="سبک" />
                 </SelectTrigger>
                 <SelectContent>
@@ -723,7 +723,7 @@ export default function ImageStudioPage() {
                 </SelectContent>
               </Select>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" style={{ direction: 'rtl' }}>
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 min-w-0" style={{ direction: 'rtl' }}>
           {history && history.length > 0 ? (
             history.map((item: any) => (
               <Card
@@ -789,9 +789,9 @@ export default function ImageStudioPage() {
       </div>
         </TabsContent>
 
-        <TabsContent value="edit" className="mt-6 space-y-6 text-right" dir="rtl">
-          <div className="grid gap-6 lg:grid-cols-2" style={{ direction: 'rtl' }}>
-            <Card className="border border-border/80 bg-card/50 backdrop-blur-sm">
+        <TabsContent value="edit" className="mt-6 space-y-4 sm:space-y-6 text-right" dir="rtl">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2 min-w-0" style={{ direction: 'rtl' }}>
+            <Card className="border border-border/80 bg-card/50 backdrop-blur-sm min-w-0 overflow-hidden">
               <CardHeader className="text-right">
                 <CardTitle className="flex items-center gap-2 flex-row-reverse">
                   <Pencil className="h-5 w-5" />
@@ -849,7 +849,7 @@ export default function ImageStudioPage() {
                 )}
 
                 {editMode === 'history' && (
-                  <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
                     {history?.slice(0, 12).map((item: any) => (
                       <button
                         key={item.id}
@@ -951,8 +951,8 @@ export default function ImageStudioPage() {
               </CardContent>
             </Card>
 
-            <Card className="border border-border/80 bg-card/50 backdrop-blur-sm">
-              <CardHeader>
+            <Card className="border border-border/80 bg-card/50 backdrop-blur-sm min-w-0 overflow-hidden">
+              <CardHeader className="text-right">
                 <CardTitle>نتیجه ویرایش</CardTitle>
                 <CardDescription>تصویر ویرایش‌شده اینجا نمایش داده می‌شود</CardDescription>
               </CardHeader>
@@ -969,7 +969,7 @@ export default function ImageStudioPage() {
                       <img
                         src={getImageDisplayUrl(editResult.imageUrl)}
                         alt="نتیجه"
-                        className="w-full rounded-xl border border-border/80 max-h-[400px] object-contain"
+                        className="w-full rounded-xl border border-border/80 max-h-[300px] sm:max-h-[400px] object-contain"
                         onLoad={() => setEditResultImageError(false)}
                         onError={() => setEditResultImageError(true)}
                       />

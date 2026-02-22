@@ -264,8 +264,8 @@ export default function DashboardHomePage() {
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-6 sm:space-y-8 text-right" dir="rtl">
+      <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between sm:flex-row-reverse">
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold truncate">داشبورد</h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base line-clamp-2">
@@ -365,7 +365,7 @@ export default function DashboardHomePage() {
 
       {coins < LOW_BALANCE_THRESHOLD && (
         <Card className="border-amber-500/50 bg-amber-500/5">
-          <CardContent className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 p-3 sm:p-4">
+          <CardContent className="flex flex-col sm:flex-row sm:flex-row-reverse items-stretch sm:items-center gap-3 sm:gap-4 p-3 sm:p-4">
             <div className="rounded-xl bg-amber-500/20 p-3">
               <AlertTriangle className="h-6 w-6 text-amber-600" />
             </div>
@@ -385,8 +385,8 @@ export default function DashboardHomePage() {
       {myInvitations.length > 0 && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Mail className="h-5 w-5 text-primary" />
+            <div className="flex items-center gap-2 mb-3 flex-row-reverse">
+              <Mail className="h-5 w-5 text-primary shrink-0" />
               <h2 className="font-semibold">دعوت‌های سازمانی</h2>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
@@ -650,7 +650,7 @@ export default function DashboardHomePage() {
                       )}
                       <span className="text-sm truncate max-w-[180px]">{tx.reason}</span>
                     </div>
-                    <div className="text-left shrink-0">
+                    <div className="shrink-0" dir="ltr">
                       <span className={`font-medium ${tx.type === 'CREDIT' ? 'text-green-600' : 'text-red-500'}`}>
                         {tx.type === 'CREDIT' ? '+' : '-'}{tx.amount}
                       </span>

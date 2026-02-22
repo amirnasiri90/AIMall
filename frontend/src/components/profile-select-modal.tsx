@@ -50,18 +50,18 @@ export function ProfileSelectModal() {
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2 py-4">
-          <Button variant="outline" className="justify-start gap-3 h-12" onClick={() => handleSelect(null)}>
-            <User className="h-5 w-5" />
+          <Button variant="outline" className="justify-start gap-3 h-12 flex-row-reverse" onClick={() => handleSelect(null)}>
+            <User className="h-5 w-5 shrink-0" />
             پروفایل شخصی
           </Button>
           {orgs?.map((org: any) => (
             <Button
               key={org.id}
               variant="outline"
-              className="justify-start gap-3 h-12"
+              className="justify-start gap-3 h-12 flex-row-reverse"
               onClick={() => handleSelect(org.id)}
             >
-              <Building2 className="h-5 w-5" />
+              <Building2 className="h-5 w-5 shrink-0" />
               {org.name}
             </Button>
           ))}

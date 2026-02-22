@@ -131,8 +131,8 @@ export default function SupportTicketPage() {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4 flex-wrap">
-          <div>
+        <CardHeader className="flex flex-row-reverse items-start justify-between gap-4 flex-wrap">
+          <div className="text-right">
             <CardTitle className="text-xl">{ticket.subject}</CardTitle>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               <Badge variant={ticket.status === 'CLOSED' ? 'secondary' : 'default'}>

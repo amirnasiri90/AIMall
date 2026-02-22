@@ -81,9 +81,9 @@ export default function SettingsPage() {
 
       {/* اطلاعات کاربری — قابل تکمیل و ویرایش */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-muted-foreground" />
+        <CardHeader className="flex flex-row-reverse items-center justify-between space-y-0 pb-2">
+          <div className="flex items-center gap-2 flex-row-reverse">
+            <User className="h-5 w-5 text-muted-foreground shrink-0" />
             <CardTitle>اطلاعات کاربری</CardTitle>
           </div>
           {!editing ? (
@@ -155,7 +155,7 @@ export default function SettingsPage() {
       {/* تنظیمات API — بزودی */}
       <Card className={cn('opacity-90')}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 flex-row-reverse">
             تنظیمات API
             <Badge variant="secondary" className="text-xs font-normal">بزودی</Badge>
           </CardTitle>
@@ -165,10 +165,10 @@ export default function SettingsPage() {
 
       {/* کلیدهای API — بزودی */}
       <Card className={cn('opacity-90')}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5" />
+        <CardHeader className="flex flex-row-reverse items-center justify-between space-y-0">
+          <div className="text-right">
+            <CardTitle className="flex items-center gap-2 flex-row-reverse">
+              <Key className="h-5 w-5 shrink-0" />
               کلیدهای API
               <Badge variant="secondary" className="text-xs font-normal">بزودی</Badge>
             </CardTitle>

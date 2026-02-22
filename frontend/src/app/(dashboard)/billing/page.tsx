@@ -191,8 +191,8 @@ export default function BillingPage() {
       {bc && (bc.effectiveCoinCap != null || bc.contractEndsAt) && (
         <Card className="border-amber-500/30 bg-amber-500/5">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-amber-600" />
+            <CardTitle className="text-base flex items-center gap-2 flex-row-reverse">
+              <Building2 className="h-4 w-4 text-amber-600 shrink-0" />
               قرارداد سازمان {bc.organizationName ? `«${bc.organizationName}»` : ''}
             </CardTitle>
           </CardHeader>

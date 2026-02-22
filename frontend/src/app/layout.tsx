@@ -62,7 +62,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <PwaViewportLock />
           <QueryProvider>
             {children}
-            <Toaster richColors position="top-left" dir="rtl" />
+            <Toaster richColors position="top-right" dir="rtl" />
             <InstallPromptBanner />
           </QueryProvider>
         </ThemeProvider>
