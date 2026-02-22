@@ -276,14 +276,14 @@ export default function ImageStudioPage() {
   }, [editImageUrl, editPrompt, editType, editRatio, editModel, refetch, history]);
 
   return (
-    <div className="space-y-6 text-right w-full max-w-6xl ms-auto" dir="rtl">
+    <div className="space-y-6 text-right w-full max-w-6xl me-auto" dir="rtl">
       <div>
         <h1 className="text-3xl font-bold">استودیو تصویر</h1>
         <p className="text-muted-foreground mt-1">تصاویر خلاقانه با هوش مصنوعی بسازید</p>
       </div>
 
       <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'generate' | 'edit')} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md me-0 ms-auto">
+        <TabsList className="grid w-full grid-cols-2 max-w-md me-auto ms-0">
           <TabsTrigger value="generate" className="rounded-xl">
             <Sparkles className="w-4 h-4 me-2" />
             تولید تصویر
