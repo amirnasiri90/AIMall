@@ -599,7 +599,7 @@ export default function ChatPage() {
 
       {/* ─────────── لیست گفتگوها (سمت راست برای کاربر ایرانی، اسکرول داخلی) ─────────── */}
       <div className={cn(
-        'flex flex-col w-full md:w-72 lg:w-80 flex-shrink-0 min-h-0 min-w-0 rounded-2xl md:rounded-[28px] glass overflow-hidden border border-border',
+        'flex flex-col w-full md:w-80 lg:w-96 flex-shrink-0 min-h-0 min-w-0 rounded-2xl md:rounded-[28px] glass overflow-hidden border border-border',
         !showList && 'hidden md:flex',
       )}>
         {/* Header */}
@@ -678,24 +678,24 @@ export default function ChatPage() {
                     : <MessageSquare className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
                   }
 
-                  {/* Title + مدل */}
-                  <div className="flex-1 min-w-0 flex flex-col items-end gap-0.5">
+                  {/* Title + مدل — محتوا کامل در عرض موجود با RTL درست */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5 overflow-hidden">
                   {editingTitle === conv.id ? (
                     <Input
                       value={editTitleValue}
                       onChange={(e) => setEditTitleValue(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') saveTitle(conv.id); if (e.key === 'Escape') setEditingTitle(null); }}
                       onBlur={() => saveTitle(conv.id)}
-                      className="h-6 text-xs flex-1 px-1 text-right"
+                      className="h-6 text-xs flex-1 px-1 text-right min-w-0"
                       dir="rtl"
                       autoFocus
                       onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
-                    <span className="text-xs truncate w-full text-foreground text-right">{conv.title}</span>
+                    <span className="text-xs text-foreground text-right line-clamp-2 break-words block min-w-0 overflow-hidden" dir="rtl" title={conv.title}>{conv.title}</span>
                   )}
                     {conv.model && (
-                      <span className="text-[10px] text-muted-foreground truncate w-full text-right" title={conv.model}>
+                      <span className="text-[10px] text-muted-foreground truncate block min-w-0 text-right" dir="rtl" title={conv.model}>
                         {modelDisplayName(conv.model)}
                       </span>
                     )}
