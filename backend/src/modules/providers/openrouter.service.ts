@@ -9,6 +9,17 @@ export class OpenRouterService implements AIProvider {
 
   constructor(private aiProviderConfig: AiProviderConfigService) {}
 
+  /** مدل‌های منسوخ OpenRouter → مدل معتبر فعلی (برای چت‌های قدیمی و سازگاری) */
+  private static readonly MODEL_ALIASES: Record<string, string> = {
+    'google/gemini-pro': 'google/gemini-2.0-flash-001',
+    'meta-llama/llama-3-8b-instruct': 'meta-llama/llama-3.1-8b-instruct',
+  };
+
+  private resolveModel(model?: string): string {
+    const raw = model || 'openai/gpt-4o-mini';
+    return OpenRouterService.MODEL_ALIASES[raw] ?? raw;
+  }
+
   private async getApiKey(): Promise<string> {
     const fromDb = await this.aiProviderConfig.getApiKeyForProvider('openrouter');
     return fromDb || process.env.OPENROUTER_API_KEY || '';
@@ -16,6 +27,7 @@ export class OpenRouterService implements AIProvider {
 
   async generateText(prompt: string, model?: string, options?: any): Promise<{ text: string; usage?: any }> {
     const apiKey = await this.getApiKey();
+    const resolvedModel = this.resolveModel(model);
     const messages = options?.messages || [{ role: 'user', content: prompt }];
     const res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
@@ -25,7 +37,7 @@ export class OpenRouterService implements AIProvider {
         'HTTP-Referer': 'https://aimall.ir',
       },
       body: JSON.stringify({
-        model: model || 'openai/gpt-4o-mini',
+        model: resolvedModel,
         messages,
         max_tokens: options?.maxTokens || 2000,
       }),
@@ -33,8 +45,8 @@ export class OpenRouterService implements AIProvider {
 
     if (!res.ok) {
       const err = await res.text();
-      this.logger.error(`OpenRouter error: ${err}`);
-      throw new Error(`OpenRouter API error: ${res.status}`);
+      this.logger.error(`OpenRouter error (model=${resolvedModel}): ${err}`);
+      throw new Error(`OpenRouter API error: ${res.status}. ${err || res.statusText}`);
     }
 
     const data = await res.json();
@@ -46,6 +58,7 @@ export class OpenRouterService implements AIProvider {
 
   async *streamText(prompt: string, model?: string, options?: any): AsyncGenerator<string> {
     const apiKey = await this.getApiKey();
+    const resolvedModel = this.resolveModel(model);
     const messages = options?.messages || [{ role: 'user', content: prompt }];
     const res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
@@ -55,7 +68,7 @@ export class OpenRouterService implements AIProvider {
         'HTTP-Referer': 'https://aimall.ir',
       },
       body: JSON.stringify({
-        model: model || 'openai/gpt-4o-mini',
+        model: resolvedModel,
         messages,
         stream: true,
         max_tokens: options?.maxTokens || 2000,
@@ -64,8 +77,8 @@ export class OpenRouterService implements AIProvider {
 
     if (!res.ok) {
       const err = await res.text();
-      this.logger.error(`OpenRouter stream error: ${err}`);
-      throw new Error(`OpenRouter API error: ${res.status}`);
+      this.logger.error(`OpenRouter stream error (model=${resolvedModel}): ${err}`);
+      throw new Error(`OpenRouter API error: ${res.status}. ${err || res.statusText}`);
     }
 
     const reader = res.body?.getReader();
@@ -131,8 +144,8 @@ export class OpenRouterService implements AIProvider {
           { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', description: 'مدل سریع و اقتصادی OpenAI', coinCost: getModelCost('openai/gpt-4o-mini') },
           { id: 'openai/gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'مدل پایه OpenAI', coinCost: getModelCost('openai/gpt-3.5-turbo') },
           { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', description: 'مدل سریع Anthropic', coinCost: getModelCost('anthropic/claude-3-haiku') },
-          { id: 'google/gemini-pro', name: 'Gemini Pro', description: 'مدل حرفه‌ای Google', coinCost: getModelCost('google/gemini-pro') },
-          { id: 'meta-llama/llama-3-8b-instruct', name: 'Llama 3 8B', description: 'مدل متن‌باز Meta', coinCost: getModelCost('meta-llama/llama-3-8b-instruct') },
+          { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', description: 'مدل حرفه‌ای Google', coinCost: getModelCost('google/gemini-2.0-flash-001') },
+          { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B', description: 'مدل متن‌باز Meta', coinCost: getModelCost('meta-llama/llama-3.1-8b-instruct') },
         ];
     }
   }
