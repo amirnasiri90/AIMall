@@ -18,6 +18,9 @@ import {
   Upload,
   Pencil,
   ImagePlus,
+  X,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -29,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { api, getImageDisplayUrl } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { formatDate } from '@/lib/utils';
@@ -119,6 +123,8 @@ export default function ImageStudioPage() {
   const [editError, setEditError] = useState<string | null>(null);
   const [editProgress, setEditProgress] = useState(0);
   const [editResultImageError, setEditResultImageError] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightboxZoom, setLightboxZoom] = useState(1);
   const editFileInputRef = useRef<HTMLInputElement>(null);
   const editProgressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -155,13 +161,15 @@ export default function ImageStudioPage() {
       setImageError(false);
       setSelectedIndex(0);
       try {
+        const effectiveRatio = (regenerateParams?.ratio ?? ratio) || '1:1';
+        const effectiveSizeTier = (regenerateParams?.sizeTier ?? sizeTier) || 'medium';
         const data = await api.generateImage({
           prompt: p,
           style: regenerateParams?.style ?? style,
           model: regenerateParams?.model ?? model,
           templateId: templateId !== 'free' ? templateId : undefined,
-          ratio: regenerateParams?.ratio ?? ratio,
-          sizeTier: regenerateParams?.sizeTier ?? sizeTier,
+          ratio: effectiveRatio,
+          sizeTier: effectiveSizeTier,
           count: regenerateParams?.count ?? count,
           styleGuide: styleGuide || undefined,
           negativePrompt: negativePrompt || undefined,
@@ -268,7 +276,7 @@ export default function ImageStudioPage() {
   }, [editImageUrl, editPrompt, editType, editRatio, editModel, refetch, history]);
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-6 text-right" dir="rtl">
       <div>
         <h1 className="text-3xl font-bold">استودیو تصویر</h1>
         <p className="text-muted-foreground mt-1">تصاویر خلاقانه با هوش مصنوعی بسازید</p>
@@ -601,9 +609,14 @@ export default function ImageStudioPage() {
                         <img
                           src={currentImageUrl}
                           alt="Generated"
-                          className={`w-full rounded-xl transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0 h-0'}`}
+                          role="button"
+                          className={`w-full rounded-xl transition-opacity duration-300 cursor-zoom-in ${imageLoaded ? 'opacity-100' : 'opacity-0 h-0'}`}
                           onLoad={() => setImageLoaded(true)}
                           onError={() => setImageError(true)}
+                          onClick={() => {
+                            const url = getImageDisplayUrl(currentImageUrl) || currentImageUrl;
+                            if (url) { setLightboxUrl(url); setLightboxZoom(1); }
+                          }}
                         />
                       )}
                     </div>
@@ -623,9 +636,14 @@ export default function ImageStudioPage() {
                       <img
                         src={currentImageUrl}
                         alt="Generated"
-                        className={`w-full rounded-xl transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0 h-0'}`}
+                        role="button"
+                        className={`w-full rounded-xl transition-opacity duration-500 cursor-zoom-in ${imageLoaded ? 'opacity-100' : 'opacity-0 h-0'}`}
                         onLoad={() => setImageLoaded(true)}
                         onError={() => setImageError(true)}
+                        onClick={() => {
+                          const url = getImageDisplayUrl(currentImageUrl) || currentImageUrl;
+                          if (url) { setLightboxUrl(url); setLightboxZoom(1); }
+                        }}
                       />
                     )}
                   </div>
@@ -722,8 +740,14 @@ export default function ImageStudioPage() {
                   <img
                     src={getImageDisplayUrl(item.output)}
                     alt={item.input}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover cursor-zoom-in"
+                    role="button"
                     loading="lazy"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const url = getImageDisplayUrl(item.output) || item.output;
+                      if (url) { setLightboxUrl(url); setLightboxZoom(1); }
+                    }}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
@@ -1081,6 +1105,40 @@ export default function ImageStudioPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* لایتباکس تصویر با زوم */}
+      <Dialog open={!!lightboxUrl} onOpenChange={(open) => !open && setLightboxUrl(null)}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] w-auto h-auto p-2 bg-black/90 border-0 overflow-hidden" onPointerDownOutside={() => setLightboxUrl(null)}>
+          {lightboxUrl && (
+            <>
+              <div className="flex items-center justify-end gap-2 mb-2">
+                <Button variant="secondary" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setLightboxZoom((z) => Math.min(z + 0.25, 4))} title="بزرگنمایی">
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+                <Button variant="secondary" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setLightboxZoom((z) => Math.max(z - 0.25, 0.25))} title="کوچکنمایی">
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                <Button variant="secondary" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setLightboxZoom(1)} title="واقعی">
+                  ۱:۱
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-white hover:bg-white/20" onClick={() => setLightboxUrl(null)} title="بستن">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="overflow-auto flex items-center justify-center min-h-[50vh]">
+                <img
+                  src={lightboxUrl}
+                  alt=""
+                  className="max-w-full max-h-[80vh] w-auto h-auto object-contain select-none transition-transform duration-100"
+                  style={{ transform: `scale(${lightboxZoom})` }}
+                  draggable={false}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
