@@ -76,7 +76,8 @@ export class ChatService {
     }
 
     const routing = await this.policy.getRouting(userId);
-    const usedModel = resolveChatModel(modelOrMode) || routing.preferredModel || conv.model || CHAT_MODES.economy;
+    // مدل/حالت ارسالی کاربر اولویت دارد؛ در غیر این صورت از تنظیمات گفتگو یا پیش‌فرض
+    const usedModel = resolveChatModel(modelOrMode) ?? routing.preferredModel ?? conv.model ?? CHAT_MODES.economy;
     const coinCost = getModelCost(usedModel);
 
     // Check coin balance before starting
@@ -168,11 +169,12 @@ export class ChatService {
     // Signal done
     yield { type: 'done' };
 
-    // Auto-title if first message pair (use visible message for title)
+    // Auto-title if first message pair: عنوان کوتاه بر اساس اولین پیام کاربر
     const totalMessages = await this.prisma.message.count({ where: { conversationId } });
     if (totalMessages <= 2) {
       const titleSource = quickAction ? (ChatService.QUICK_ACTIONS[quickAction]?.label || message) : message;
-      const title = titleSource.length > 30 ? titleSource.substring(0, 30) + '...' : titleSource;
+      const clean = titleSource.replace(/\s+/g, ' ').trim();
+      const title = clean.length > 45 ? clean.substring(0, 45) + '…' : (clean || 'گفتگوی جدید');
       await this.prisma.conversation.update({ where: { id: conversationId }, data: { title, model: usedModel } });
     }
 
@@ -182,13 +184,10 @@ export class ChatService {
     });
   }
 
-  /** Estimate cost for a message (for display before sending). */
+  /** Estimate cost for a message (for display before sending). همان مبلغی که بعداً کسر می‌شود. */
   async estimate(userId: string, message: string, modeOrModel?: string, conversationId?: string): Promise<{ estimatedCoins: number }> {
-    const usedModel = resolveChatModel(modeOrModel) || CHAT_MODES.economy;
-    const baseCost = getModelCost(usedModel);
-    // Slightly higher estimate for long messages (more output expected)
-    const lengthFactor = 1 + Math.min(message.length / 2000, 1) * 0.5;
-    const estimatedCoins = Math.max(1, Math.ceil(baseCost * lengthFactor));
+    const usedModel = resolveChatModel(modeOrModel) ?? CHAT_MODES.economy;
+    const estimatedCoins = getModelCost(usedModel);
     return { estimatedCoins };
   }
 }

@@ -34,7 +34,7 @@ export class ProviderManagerService {
 
   async generateTextWithFallback(prompt: string, model?: string, options?: any, section: ServiceSection = CHAT_SECTION) {
     const resolved = await this.resolver.resolve(section, model);
-    const effectiveModel = resolved?.modelId || model || 'openai/gpt-4o-mini';
+    const effectiveModel = model || resolved?.modelId || 'openai/gpt-4o-mini';
     const startTime = Date.now();
 
     if (resolved?.providerKey === 'xai' && resolved.apiKey) {
@@ -63,7 +63,8 @@ export class ProviderManagerService {
 
   async *streamTextWithFallback(prompt: string, model?: string, options?: any, section: ServiceSection = CHAT_SECTION): AsyncGenerator<string> {
     const resolved = await this.resolver.resolve(section, model);
-    const effectiveModel = resolved?.modelId || model || 'openai/gpt-4o-mini';
+    // ترجیح مدل درخواست‌شده توسط کاربر (چت/متن) بر مدل پیشنهادی resolver تا انتخاب کاربر حفظ شود
+    const effectiveModel = model || resolved?.modelId || 'openai/gpt-4o-mini';
     const startTime = Date.now();
 
     if (resolved?.providerKey === 'xai' && resolved.apiKey) {

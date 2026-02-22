@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
@@ -101,6 +101,8 @@ export default function ChatPage() {
   const [editingMemory, setEditingMemory] = useState<{ id: string; content: string } | null>(null);
   const [regenerateStyle, setRegenerateStyle] = useState<'different' | 'accurate' | 'creative' | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<{ id: string; file: File; preview?: string }[]>([]);
+  const [filterByModel, setFilterByModel] = useState<string>('all');
+  const [optimisticUserMessage, setOptimisticUserMessage] = useState<string | null>(null);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const compareEventSourceRef = useRef<EventSource | null>(null);
@@ -108,18 +110,35 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const { user, currentOrganizationId } = useAuthStore();
 
-  /* ── URL prefill (from dashboard quick search: ?q=... or ?conv=...) ── */
+  /* ── خواندن conv از URL در بار اول؛ بعد از آن هر بار activeConv عوض شد URL را به‌روز کن تا رفرش همان چت باز بماند ── */
   const appliedUrlRef = useRef(false);
   useEffect(() => {
     if (appliedUrlRef.current) return;
     const q = searchParams.get('q');
     const convId = searchParams.get('conv');
     if (q) setMessage(decodeURIComponent(q));
-    if (convId) setActiveConv(convId);
+    if (convId) {
+      setActiveConv(convId);
+      setShowList(false);
+    }
     if (q || convId) appliedUrlRef.current = true;
   }, [searchParams]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !pathname) return;
+    const params = new URLSearchParams(window.location.search);
+    const prevConv = params.get('conv');
+    if (activeConv) params.set('conv', activeConv);
+    else params.delete('conv');
+    const newSearch = params.toString() ? `?${params.toString()}` : '';
+    if (newSearch !== window.location.search) {
+      router.replace(pathname + newSearch, { scroll: false });
+    }
+  }, [activeConv, pathname, router]);
 
   const readFileAsBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -199,6 +218,19 @@ export default function ChatPage() {
   });
 
   const activeConvData = conversations?.find((c: any) => c.id === activeConv);
+
+  /* مدل‌های یکتا در گفتگوها برای فیلتر */
+  const uniqueModels = useMemo(() => {
+    const set = new Set<string>();
+    conversations?.forEach((c: any) => { if (c.model) set.add(c.model); });
+    return Array.from(set).sort();
+  }, [conversations]);
+
+  const filteredConversations = useMemo(() => {
+    if (!conversations) return [];
+    if (filterByModel === 'all') return conversations;
+    return conversations.filter((c: any) => c.model === filterByModel);
+  }, [conversations, filterByModel]);
 
   /* ── Auto-scroll ── */
   useEffect(() => {
@@ -290,7 +322,10 @@ export default function ChatPage() {
     const hasAttachments = attachedFiles.length > 0;
     if ((!message.trim() && !regenerate && !hasAttachments) || !activeConv || streaming) return;
     const msg = regenerate ? (messages?.at(-2)?.content || message) : message;
-    if (!regenerate) setMessage('');
+    if (!regenerate) {
+      setMessage('');
+      setOptimisticUserMessage(msg || (hasAttachments ? '[فایل پیوست شده]' : ''));
+    }
     setStreaming(true);
     setStreamText('');
     setLastUsage(null);
@@ -326,6 +361,7 @@ export default function ChatPage() {
           onDelta: (c) => setStreamText((p) => p + c),
           onUsage: (u) => setLastUsage({ coinCost: u.coinCost, model: u.model }),
           onDone: () => {
+            setOptimisticUserMessage(null);
             setStreaming(false);
             setStreamText('');
             setRegenerateStyle(null);
@@ -333,6 +369,7 @@ export default function ChatPage() {
             queryClient.invalidateQueries({ queryKey: ['conversations'] });
           },
           onError: (m) => {
+            setOptimisticUserMessage(null);
             toast.error(m);
             setStreaming(false);
             setRegenerateStyle(null);
@@ -363,13 +400,14 @@ export default function ChatPage() {
       onDelta: (c) => setStreamText(p => p + c),
       onUsage: (u) => setLastUsage({ coinCost: u.coinCost, model: u.model }),
       onDone: () => {
+        setOptimisticUserMessage(null);
         setStreaming(false);
         setStreamText('');
         setRegenerateStyle(null);
         queryClient.invalidateQueries({ queryKey: ['messages', activeConv] });
         queryClient.invalidateQueries({ queryKey: ['conversations'] });
       },
-      onError: (m) => { toast.error(m); setStreaming(false); setRegenerateStyle(null); },
+      onError: (m) => { setOptimisticUserMessage(null); toast.error(m); setStreaming(false); setRegenerateStyle(null); },
       onCompressed: () => toast.info('برای بهبود عملکرد، گفتگو فشرده شد.'),
       onMemorySuggestion: (content) => {
         const toastId = 'memory-suggestion';
@@ -420,7 +458,7 @@ export default function ChatPage() {
         queryClient.invalidateQueries({ queryKey: ['messages', activeConv] });
         queryClient.invalidateQueries({ queryKey: ['conversations'] });
       },
-      onError: (m) => { toast.error(m); setStreaming(false); setRegenerateStyle(null); },
+      onError: (m) => { setOptimisticUserMessage(null); toast.error(m); setStreaming(false); setRegenerateStyle(null); },
       onCompressed: () => toast.info('برای بهبود عملکرد، گفتگو فشرده شد.'),
       onMemorySuggestion: (content) => {
         const toastId = 'memory-suggestion';
@@ -595,15 +633,35 @@ export default function ChatPage() {
           />
         </div>
 
+        {/* فیلتر بر اساس مدل */}
+        {uniqueModels.length > 0 && (
+          <div className="px-4 pb-2 flex items-center gap-2 flex-row-reverse">
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap">مدل:</span>
+            <Select value={filterByModel} onValueChange={setFilterByModel}>
+              <SelectTrigger className="h-7 text-[10px] flex-1 min-w-0 border-border" dir="rtl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه</SelectItem>
+                {uniqueModels.map((m: string) => (
+                  <SelectItem key={m} value={m}>
+                    <span className="truncate block">{modelDisplayName(m)}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* List */}
         <ScrollArea className="flex-1 min-h-0 px-3">
           <div className="space-y-1 py-2">
             {convsLoading ? (
               Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-11 w-full rounded-lg" />)
-            ) : conversations?.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-8">{showArchived ? 'آرشیو خالی است' : 'هنوز گفتگویی نداری — کنجکاوی کن، یکی بساز'}</p>
+            ) : filteredConversations.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-8">{showArchived ? 'آرشیو خالی است' : filterByModel !== 'all' ? 'گفتگویی با این مدل نیست' : 'هنوز گفتگویی نداری — کنجکاوی کن، یکی بساز'}</p>
             ) : (
-              conversations?.map((conv: any) => (
+              filteredConversations.map((conv: any) => (
                 <div
                   key={conv.id}
                   className={cn(
@@ -620,7 +678,8 @@ export default function ChatPage() {
                     : <MessageSquare className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
                   }
 
-                  {/* Title (inline edit or text) */}
+                  {/* Title + مدل */}
+                  <div className="flex-1 min-w-0 flex flex-col items-end gap-0.5">
                   {editingTitle === conv.id ? (
                     <Input
                       value={editTitleValue}
@@ -633,8 +692,14 @@ export default function ChatPage() {
                       onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
-                    <span className="text-xs truncate flex-1 text-foreground text-right">{conv.title}</span>
+                    <span className="text-xs truncate w-full text-foreground text-right">{conv.title}</span>
                   )}
+                    {conv.model && (
+                      <span className="text-[10px] text-muted-foreground truncate w-full text-right" title={conv.model}>
+                        {modelDisplayName(conv.model)}
+                      </span>
+                    )}
+                  </div>
 
                   {/* Context menu (replaces 4 hover buttons) */}
                   <DropdownMenu>
@@ -838,13 +903,13 @@ export default function ChatPage() {
                           {/* حباب پیام + فوتر (متن راست‌چین) */}
                           <div className={cn('max-w-[90%] sm:max-w-[75%] space-y-1 text-right', isUser ? 'items-end' : 'items-start')}>
                             <div className={cn(
-                              'rounded-2xl px-3.5 py-2 text-sm leading-relaxed text-right',
+                              'rounded-2xl px-3.5 py-2 text-sm leading-relaxed',
                               isUser
-                                ? 'bg-primary text-primary-foreground shadow-glass-sm whitespace-pre-wrap'
-                                : 'glass-subtle'
-                            )}>
+                                ? 'bg-primary text-primary-foreground shadow-glass-sm whitespace-pre-wrap text-right'
+                                : 'glass-subtle text-right'
+                            )} dir="auto">
                               {isUser ? msg.content : (
-                                <div className="prose-sm prose-p:text-right prose-ul:text-right prose-ol:text-right prose-li:text-right max-w-none">
+                                <div className="prose-sm prose-p:text-right prose-ul:text-right prose-ol:text-right prose-li:text-right max-w-none" dir="auto">
                                   <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</ReactMarkdown>
                                 </div>
                               )}
@@ -936,17 +1001,31 @@ export default function ChatPage() {
                     })
                   )}
 
-                  {/* Streaming bubble */}
-                  {streaming && streamText && (
+                  {/* پیام کاربر به‌صورت خوش‌بینانه بلافاصله بعد از ارسال */}
+                  {optimisticUserMessage && (
+                    <div className="flex gap-2.5 flex-row-reverse text-right">
+                      <div className="h-7 w-7 rounded-full bg-primary/15 backdrop-blur-sm flex items-center justify-center flex-shrink-0 mt-1">
+                        <User className="h-3.5 w-3.5 text-primary" />
+                      </div>
+                      <div className="max-w-[90%] sm:max-w-[75%] rounded-2xl px-3.5 py-2 text-sm bg-primary text-primary-foreground shadow-glass-sm whitespace-pre-wrap text-right" dir="auto">
+                        {optimisticUserMessage}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Streaming bubble — پاسخ در لحظه در حال نوشته شدن */}
+                  {streaming && (
                     <div className="flex gap-2.5 flex-row text-right">
                       <div className="h-7 w-7 rounded-full bg-primary/10 backdrop-blur-sm flex items-center justify-center flex-shrink-0 mt-1">
                         <Bot className="h-3.5 w-3.5 text-primary" />
                       </div>
-                      <div className="max-w-[90%] sm:max-w-[75%] rounded-2xl px-3.5 py-2 text-sm glass-subtle leading-relaxed text-right">
-                        <div className="prose-sm prose-p:text-right max-w-none">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{streamText}</ReactMarkdown>
-                        </div>
-                        <span className="inline-block w-1.5 h-4 bg-primary/60 rounded-sm animate-pulse align-middle me-0.5" />
+                      <div className="max-w-[90%] sm:max-w-[75%] rounded-2xl px-3.5 py-2 text-sm glass-subtle leading-relaxed text-right min-h-[2rem]" dir="auto">
+                        {(streamText && (
+                          <div className="prose-sm prose-p:text-right max-w-none" dir="auto">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{streamText}</ReactMarkdown>
+                          </div>
+                        )) || null}
+                        <span className="inline-block w-1.5 h-4 bg-primary/60 rounded-sm animate-pulse align-middle me-0.5" aria-hidden />
                       </div>
                     </div>
                   )}
@@ -1050,7 +1129,7 @@ export default function ChatPage() {
                 )}
               </div>
               {estimatedCoins != null && message.trim() && (
-                <p className="text-[10px] text-muted-foreground px-1 text-right">هزینه تقریبی: ~{estimatedCoins} سکه</p>
+                <p className="text-[10px] text-muted-foreground px-1 text-right">هزینه: {estimatedCoins} سکه</p>
               )}
             </div>
           </>
